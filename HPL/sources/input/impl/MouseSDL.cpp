@@ -22,6 +22,7 @@
 
 #include "graphics/LowLevelGraphics.h"
 #include "input/impl/LowLevelInputSDL.h"
+#include "math/Math.h"
 
 namespace hpl {
 
@@ -84,8 +85,24 @@ namespace hpl {
 
 			if(pEvent->type == SDL_MOUSEMOTION)
 			{
-				mvMouseAbsPos = cVector2f((float)pEvent->motion.x,(float)pEvent->motion.y);
-				mvMouseAbsPos = (mvMouseAbsPos/vScreenSize)*vVirtualSize;
+				if(SDL_GetRelativeMouseMode() == SDL_TRUE)
+				{
+					// SDL2 relative mode locks the system cursor, so motion.x/y
+					// stop tracking and pin to the window edge - which parked the
+					// in-game pointer in a corner. Accumulate the deltas instead.
+					// (The SDL1.2 original could read motion.x/y under WM grab.)
+					cVector2f vDelta((float)pEvent->motion.xrel,(float)pEvent->motion.yrel);
+					vDelta = (vDelta/vScreenSize)*vVirtualSize;
+
+					mvMouseAbsPos += vDelta;
+					mvMouseAbsPos.x = cMath::Clamp(mvMouseAbsPos.x, 0.0f, vVirtualSize.x);
+					mvMouseAbsPos.y = cMath::Clamp(mvMouseAbsPos.y, 0.0f, vVirtualSize.y);
+				}
+				else
+				{
+					mvMouseAbsPos = cVector2f((float)pEvent->motion.x,(float)pEvent->motion.y);
+					mvMouseAbsPos = (mvMouseAbsPos/vScreenSize)*vVirtualSize;
+				}
 
 				Uint8 buttonState = pEvent->motion.state;
 
