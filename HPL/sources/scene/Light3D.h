@@ -125,6 +125,10 @@ namespace hpl {
 
 		void AddShadowCaster(iRenderable* apObject, cFrustum* apFrustum, bool abStatic,cRenderList *apRenderList);
 		bool HasStaticCasters();
+
+		const tCasterCacheSet& GetStaticCasters() const { return m_setStaticCasters; }
+		const tCasterCacheSet& GetDynamicCasters() const { return m_setDynamicCasters; }
+
 		void ClearCasters(bool abClearStatic);
 
 		void SetAllStaticCastersAdded(bool abX){ mbStaticCasterAdded = abX;}

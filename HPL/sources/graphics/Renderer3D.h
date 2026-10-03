@@ -26,6 +26,8 @@
 
 namespace hpl {
 
+	class cLight3DSpot;
+
 
 #define eRendererDebugFlag_DrawTangents			(0x00000001)
 #define eRendererDebugFlag_DrawNormals			(0x00000002)
@@ -121,6 +123,8 @@ namespace hpl {
 
 	//---------------------------------------------
 
+	class cShadowMap;
+
 	class cRenderer3D
 	{
 	public:
@@ -178,6 +182,7 @@ namespace hpl {
 		void RenderZ(cCamera *apCamera);
 		void RenderOcclusionQueries(cCamera *apCamera);
 		void RenderLight(cCamera *apCamera);
+		void RenderShadowMap(cLight3DSpot *apLight);
 		void RenderDiffuse(cCamera *apCamera);
 		void RenderTrans(cCamera *apCamera);
 
@@ -196,6 +201,10 @@ namespace hpl {
 		iGpuProgram *mpDiffuseProgram;
 
 		iGpuProgram* mpLightProgram;
+
+		iGpuProgram* mpDepthProgram;
+
+		cShadowMap* mpShadowMap;
 
 		cRenderSettings mRenderSettings;
 

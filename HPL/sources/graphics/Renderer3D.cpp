@@ -33,6 +33,7 @@
 #include "scene/RenderableContainer.h"
 #include "scene/Light3D.h"
 #include "scene/Light3DSpot.h"
+#include "graphics/ogl2/ShadowMap.h"
 #include "graphics/Material_Universal.h"
 #include "graphics/RenderState.h"
 #include "math/BoundingVolume.h"
@@ -111,6 +112,19 @@ namespace hpl {
 		{
 			Error("Could not load light program - the scene will stay unlit!\n");
 		}
+		else
+		{
+			mpLightProgram->Bind();
+			mpLightProgram->SetTextureBindingIndex("shadowMap", 2);
+			mpLightProgram->UnBind();
+		}
+
+		mpDepthProgram = _programManager->CreateProgram("PreZ.vert", "Depth.frag");
+		mpShadowMap = new cShadowMap(1024);
+		if(mpDepthProgram == NULL || mpShadowMap->IsValid() == false)
+		{
+			Error("Could not set up shadow mapping - lights will not cast shadows\n");
+		}
 
 		/////////////////////////////////////////////
 		//Create sky box graphics.
@@ -129,6 +143,8 @@ namespace hpl {
 
 		if(mpDiffuseProgram) _programManager->Destroy(mpDiffuseProgram);
 		if(mpLightProgram) _programManager->Destroy(mpLightProgram);
+		if(mpDepthProgram) _programManager->Destroy(mpDepthProgram);
+		delete mpShadowMap;
 
 		if(mpSkyBox) delete mpSkyBox;
 		if(mpSkyBoxTexture && mbAutoDestroySkybox)
@@ -555,6 +571,53 @@ namespace hpl {
 
 	//-----------------------------------------------------------------------
 
+	void cRenderer3D::RenderShadowMap(cLight3DSpot *apLight)
+	{
+		mpShadowMap->BeginRender();
+		mpDepthProgram->Bind();
+
+		const cMatrixf mtxLightViewProj = apLight->GetViewProjMatrix();
+
+		// The casters were gathered from the light's own point of view by
+		// cPortalContainer::AddLightShadowCasters, so this covers geometry the
+		// camera cannot see - which is exactly what casts the shadow in.
+		const bool bWithDynamic = (mRenderSettings.mShowShadows == eRendererShowShadows_All);
+
+		for(int lPass=0; lPass<2; ++lPass)
+		{
+			if(lPass == 1 && bWithDynamic == false) break;
+
+			const tCasterCacheSet &setCasters = (lPass == 0)
+				? apLight->GetStaticCasters()
+				: apLight->GetDynamicCasters();
+
+			for(iRenderable *pObject : setCasters)
+			{
+				iVertexBuffer *pVtxBuffer = pObject->GetVertexBuffer();
+				if(pVtxBuffer == NULL) continue;
+
+				const cMatrixf mtxModel = pObject->GetModelMatrix(NULL);
+				mpDepthProgram->SetMatrixf("worldViewProj",
+					cMath::MatrixMul(mtxLightViewProj, mtxModel));
+
+				pVtxBuffer->Bind();
+				pVtxBuffer->Draw();
+				pVtxBuffer->UnBind();
+			}
+		}
+
+		mpDepthProgram->UnBind();
+
+		const cVector2f vScreenSize = _llGfx->GetScreenSize();
+		mpShadowMap->EndRender((int)vScreenSize.x, (int)vScreenSize.y);
+
+		// The tree caches what it last bound; the pass above went around it.
+		mRenderSettings.mpVtxBuffer = NULL;
+		mRenderSettings.mpProgram = NULL;
+	}
+
+	//-----------------------------------------------------------------------
+
 	void cRenderer3D::RenderLight(cCamera *apCamera)
 	{
 		if(mDebugFlags & eRendererDebugFlag_DisableLighting) return;
@@ -595,9 +658,38 @@ namespace hpl {
 
 			if(mbLog) Log("-----Light %s ------\n", pLight->GetName().c_str());
 
+			//////////////////////////////////////////////
+			// Shadow map, spot lights only for now.
+			bool bShadowed = false;
+			if(pLight->GetLightType() == eLight3DType_Spot && pLight->GetCastShadows()
+				&& mRenderSettings.mShowShadows != eRendererShowShadows_None
+				&& mpDepthProgram && mpShadowMap && mpShadowMap->IsValid())
+			{
+				RenderShadowMap(static_cast<cLight3DSpot*>(pLight));
+				bShadowed = true;
+
+				// RenderShadowMap left its own target and program state behind.
+				_llGfx->SetDepthTestFunc(eDepthTestFunc_Equal);
+				_llGfx->SetDepthWriteActive(false);
+				ApplyBlendMode(_llGfx, eMaterialBlendMode_Add);
+
+				mpLightProgram->Bind();
+				mpLightProgram->SetFloat("alphaCutoff", 0.6f);
+				mRenderSettings.mpProgram = mpLightProgram;
+
+				mpShadowMap->BindAsTexture(2);
+			}
+
 			// Scissors the pass down to the light's screen footprint.
 			if(pLight->BeginDraw(&mRenderSettings, _llGfx))
 			{
+				mpLightProgram->SetFloat("shadowStrength", bShadowed ? 1.0f : 0.0f);
+				if(bShadowed)
+				{
+					mpLightProgram->SetMatrixf("lightViewProj",
+						static_cast<cLight3DSpot*>(pLight)->GetViewProjMatrix());
+				}
+
 				const cVector3f vPos = pLight->GetWorldPosition();
 				const cColor col = pLight->GetDiffuseColor();
 				const float fRadius = pLight->GetFarAttenuation();
