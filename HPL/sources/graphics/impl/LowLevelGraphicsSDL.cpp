@@ -187,6 +187,23 @@ namespace hpl {
 
 	bool cLowLevelGraphicsSDL::Init(int alWidth, int alHeight, bool abFullscreen, const tString& asWindowCaption)
 	{
+		// The shipped config stores Width/Height as -1, meaning "use the desktop
+		// resolution" - SDL 1.2 understood that, SDL2 does not and would make a
+		// degenerate window. Resolve it before anything reads the screen size:
+		// the mouse scaling, camera aspect and scissor rects all divide by it.
+		if (alWidth <= 0 || alHeight <= 0)
+		{
+			SDL_DisplayMode mode;
+			if (SDL_GetDesktopDisplayMode(0, &mode) == 0) {
+				alWidth = mode.w;
+				alHeight = mode.h;
+			} else {
+				Error("Could not query desktop display mode: %s\n", SDL_GetError());
+				alWidth = 800;
+				alHeight = 600;
+			}
+		}
+
 		mvScreenSize.x = alWidth;
 		mvScreenSize.y = alHeight;
 
@@ -217,6 +234,15 @@ namespace hpl {
 		if (mpWindow == NULL) {
 			FatalError("Unable to initialize display!\n");
 			return false;
+		}
+
+		// A window manager may hand back a different size than requested.
+		int lRealWidth = alWidth, lRealHeight = alHeight;
+		SDL_GetWindowSize(mpWindow, &lRealWidth, &lRealHeight);
+		if (lRealWidth != alWidth || lRealHeight != alHeight) {
+			Log("  Window manager gave %d x %d instead\n", lRealWidth, lRealHeight);
+			mvScreenSize.x = lRealWidth;
+			mvScreenSize.y = lRealHeight;
 		}
 		
 		// GL context
