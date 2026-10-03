@@ -63,7 +63,9 @@ namespace hpl {
 
 	cParticleSystem3D* cParticleManager::CreateParticleSystem(const tString& name, const tString& asType, cVector3f avSize,const cMatrixf& a_mtxTransform)
 	{
-		auto data = static_cast<cParticleSystemData3D*>(GetOrLoadResource(name));
+		// The .ps file is named after the TYPE; `name` is just this instance's
+		// label ("ImpactPS"), which resolves to nothing.
+		auto data = static_cast<cParticleSystemData3D*>(GetOrLoadResource(asType));
 		if (data) {
 			cParticleSystem3D* system = data->Create(name, avSize, a_mtxTransform);
 			system->SetDataName(asType);

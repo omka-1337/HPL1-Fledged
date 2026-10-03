@@ -18,6 +18,8 @@
  */
 #include "game/Game.h"
 
+#include <cstdlib>
+
 #include "input/Input.h"
 #include "input/Mouse.h"
 
@@ -213,6 +215,27 @@ namespace hpl {
 	//-----------------------------------------------------------------------
 
 	int glClearUpdateCheck=0;
+
+	//-----------------------------------------------------------------------
+
+	/**
+	 * Frame tracing, off unless HPL_FRAME_TRACE is set in the environment.
+	 * Set it to the threshold in milliseconds (or to 1 for a default of 30) and
+	 * every frame slower than that logs where its time went. Hitches are hard to
+	 * attribute by eye, and this costs two clock reads per frame when disabled.
+	 */
+	static bool FrameTraceThreshold(uint64_t &aThresholdMS)
+	{
+		const char *pEnv = getenv("HPL_FRAME_TRACE");
+		if(pEnv == NULL) return false;
+
+		const long lValue = strtol(pEnv, NULL, 10);
+		aThresholdMS = (lValue > 1) ? (uint64_t)lValue : 30;
+		return true;
+	}
+
+	//-----------------------------------------------------------------------
+
 	void cGame::Run()
 	{
 		//Log line that ends user init.
@@ -236,15 +259,27 @@ namespace hpl {
 		mfFrameTime = 0;
 		float tempFrameTime = GetAppTimeFloat();
 
+		uint64_t lTraceThresholdMS = 0;
+		const bool bTrace = FrameTraceThreshold(lTraceThresholdMS);
+		uint64_t lTraceFrameStart = 0, lTraceUpdateMS = 0, lTraceListMS = 0;
+		uint64_t lTraceRenderMS = 0, lTraceSwapMS = 0;
+
 		bool mbIsUpdated = true;
 
 		while(!mbGameIsDone)
 		{
+			if(bTrace)
+			{
+				lTraceFrameStart = GetAppTimeMS();
+				lTraceUpdateMS = lTraceListMS = lTraceRenderMS = lTraceSwapMS = 0;
+			}
+
 			//Log("-----------------\n");
 			//////////////////////////
 			//Update logic.
 			while(mpLogicTimer->WantUpdate() && !mbGameIsDone)
 			{
+				const uint64_t lTraceUpdateStart = bTrace ? GetAppTimeMS() : 0;
 				float updateTime = GetAppTimeFloat();
 				mpUpdater->Update(GetStepSize());
 				mfUpdateTime = GetAppTimeFloat() - updateTime;
@@ -258,6 +293,8 @@ namespace hpl {
 				}
 
 				mfGameTime += GetStepSize();
+
+				if(bTrace) lTraceUpdateMS += GetAppTimeMS() - lTraceUpdateStart;
 			}
 			mpLogicTimer->EndUpdateLoop();
 
@@ -268,7 +305,10 @@ namespace hpl {
 
 			if(mbIsUpdated)
 			{
+				const uint64_t lTraceListStart = bTrace ? GetAppTimeMS() : 0;
 				mpScene->UpdateRenderList(mfFrameTime);
+				if(bTrace) lTraceListMS = GetAppTimeMS() - lTraceListStart;
+
 				if(mbLimitFPS==false) mbIsUpdated = false;
 			}
 
@@ -283,15 +323,19 @@ namespace hpl {
 				tempFrameTime = GetAppTimeFloat();
 
 				//Draw this frame
+				const uint64_t lTraceRenderStart = bTrace ? GetAppTimeMS() : 0;
 				_llGfx->StartFrame();
 				mpUpdater->OnDraw();
 				mpScene->Render(mpUpdater,mfFrameTime);
+				if(bTrace) lTraceRenderMS = GetAppTimeMS() - lTraceRenderStart;
 
 				//Update fps counter.
 				mpFPSCounter->AddFrame();
 
 				//Update the screen.
+				const uint64_t lTraceSwapStart = bTrace ? GetAppTimeMS() : 0;
 				_llGfx->EndFrame();
+				if(bTrace) lTraceSwapMS = GetAppTimeMS() - lTraceSwapStart;
 				//if(mbRenderOnce)
 				{
 					_renderer->FetchOcclusionQueries();
@@ -299,6 +343,20 @@ namespace hpl {
 				}
 
 				fNumOfTimes++;
+			}
+
+			if(bTrace)
+			{
+				const uint64_t lTotalMS = GetAppTimeMS() - lTraceFrameStart;
+				if(lTotalMS >= lTraceThresholdMS)
+				{
+					Log("SLOW FRAME %llu ms: update %llu, renderlist %llu, render %llu, swap %llu\n",
+						(unsigned long long)lTotalMS,
+						(unsigned long long)lTraceUpdateMS,
+						(unsigned long long)lTraceListMS,
+						(unsigned long long)lTraceRenderMS,
+						(unsigned long long)lTraceSwapMS);
+				}
 			}
 		}
 		Log("--------------------------------------------------------\n\n");

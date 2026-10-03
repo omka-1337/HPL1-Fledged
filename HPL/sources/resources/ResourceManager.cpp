@@ -81,7 +81,9 @@ namespace hpl {
 
 		tString qualifiedName = FileSearcher::ResolveAssetName(name, SupportedExtensions());
 		if (qualifiedName.length() == 0) {
-			Error("Couldn't resolve %s resource name '%s'\n", _resourceTypeName.c_str(), qualifiedName.c_str());
+			// Report what was asked for; qualifiedName is empty by definition here.
+			Error("Couldn't resolve %s resource name '%s'\n", _resourceTypeName.c_str(), name.c_str());
+			EndLoad();
 			return nullptr;
 		}
 
@@ -98,6 +100,13 @@ namespace hpl {
 			}
 
 			AddResource(resource);
+		}
+
+		if (resource == nullptr) {
+			// Resolved to a name, but nothing on disk answers to it.
+			Error("Couldn't find %s resource '%s'\n", _resourceTypeName.c_str(), qualifiedName.c_str());
+			EndLoad();
+			return nullptr;
 		}
 
 		resource->IncUserCount();
