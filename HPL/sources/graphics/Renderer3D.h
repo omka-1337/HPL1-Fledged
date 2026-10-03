@@ -124,6 +124,7 @@ namespace hpl {
 	//---------------------------------------------
 
 	class cShadowMap;
+	class cShadowMapCube;
 
 	class cRenderer3D
 	{
@@ -183,6 +184,7 @@ namespace hpl {
 		void RenderOcclusionQueries(cCamera *apCamera);
 		void RenderLight(cCamera *apCamera);
 		void RenderShadowMap(cLight3DSpot *apLight);
+		void RenderShadowCube(iLight3D *apLight);
 		void RenderDiffuse(cCamera *apCamera);
 		void RenderTrans(cCamera *apCamera);
 
@@ -205,6 +207,8 @@ namespace hpl {
 		iGpuProgram* mpDepthProgram;
 
 		cShadowMap* mpShadowMap;
+
+		cShadowMapCube* mpShadowCube;
 
 		cRenderSettings mRenderSettings;
 

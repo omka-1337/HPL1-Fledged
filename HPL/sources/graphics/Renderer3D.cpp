@@ -34,6 +34,10 @@
 #include "scene/Light3D.h"
 #include "scene/Light3DSpot.h"
 #include "graphics/ogl2/ShadowMap.h"
+
+#include <algorithm>
+#include <set>
+#include <vector>
 #include "graphics/Material_Universal.h"
 #include "graphics/RenderState.h"
 #include "math/BoundingVolume.h"
@@ -41,6 +45,12 @@
 #include "system/Log.h"
 
 namespace hpl {
+
+	// Point lights need six depth passes each, so only the few nearest the
+	// camera get them - which is always the one the player is carrying.
+	static const int kMaxShadowedPointLights = 2;
+	static const float kShadowCubeNear = 0.05f;
+
 
 	//////////////////////////////////////////////////////////////////////////
 	// RENDER SETTINGS
@@ -116,11 +126,13 @@ namespace hpl {
 		{
 			mpLightProgram->Bind();
 			mpLightProgram->SetTextureBindingIndex("shadowMap", 2);
+			mpLightProgram->SetTextureBindingIndex("shadowCube", 3);
 			mpLightProgram->UnBind();
 		}
 
 		mpDepthProgram = _programManager->CreateProgram("PreZ.vert", "Depth.frag");
 		mpShadowMap = new cShadowMap(1024);
+		mpShadowCube = new cShadowMapCube(512);
 		if(mpDepthProgram == NULL || mpShadowMap->IsValid() == false)
 		{
 			Error("Could not set up shadow mapping - lights will not cast shadows\n");
@@ -145,6 +157,7 @@ namespace hpl {
 		if(mpLightProgram) _programManager->Destroy(mpLightProgram);
 		if(mpDepthProgram) _programManager->Destroy(mpDepthProgram);
 		delete mpShadowMap;
+		delete mpShadowCube;
 
 		if(mpSkyBox) delete mpSkyBox;
 		if(mpSkyBoxTexture && mbAutoDestroySkybox)
@@ -618,6 +631,88 @@ namespace hpl {
 
 	//-----------------------------------------------------------------------
 
+	void cRenderer3D::RenderShadowCube(iLight3D *apLight)
+	{
+		const cVector3f vLightPos = apLight->GetWorldPosition();
+		const float fFar = apLight->GetFarAttenuation();
+		const float fNear = kShadowCubeNear;
+
+		// 90 degree frustum, square aspect: the generic form collapses to this.
+		const float Z = -(fFar + fNear) / (fFar - fNear);
+		const float C = -(2.0f * fFar * fNear) / (fFar - fNear);
+		const cMatrixf mtxProj(1,0,0,0,
+							   0,1,0,0,
+							   0,0,Z,C,
+							   0,0,-1,0);
+
+		// Face order must match GL_TEXTURE_CUBE_MAP_POSITIVE_X and onwards, or
+		// the lookup direction in the shader lands on the wrong face.
+		static const cVector3f vFaceDir[6] = {
+			cVector3f( 1, 0, 0), cVector3f(-1, 0, 0),
+			cVector3f( 0, 1, 0), cVector3f( 0,-1, 0),
+			cVector3f( 0, 0, 1), cVector3f( 0, 0,-1)
+		};
+		static const cVector3f vFaceUp[6] = {
+			cVector3f( 0,-1, 0), cVector3f( 0,-1, 0),
+			cVector3f( 0, 0, 1), cVector3f( 0, 0,-1),
+			cVector3f( 0,-1, 0), cVector3f( 0,-1, 0)
+		};
+
+		mpShadowCube->BeginRender();
+		mpDepthProgram->Bind();
+
+		const bool bWithDynamic = (mRenderSettings.mShowShadows == eRendererShowShadows_All);
+
+		for(int lFace=0; lFace<6; ++lFace)
+		{
+			mpShadowCube->BeginFace(lFace);
+
+			const cVector3f vForward = vFaceDir[lFace];
+			const cVector3f vRight = cMath::Vector3Normalize(cMath::Vector3Cross(vForward, vFaceUp[lFace]));
+			const cVector3f vUp = cMath::Vector3Cross(vRight, vForward);
+
+			const cMatrixf mtxView(
+				vRight.x,   vRight.y,   vRight.z,   -cMath::Vector3Dot(vRight, vLightPos),
+				vUp.x,      vUp.y,      vUp.z,      -cMath::Vector3Dot(vUp, vLightPos),
+				-vForward.x,-vForward.y,-vForward.z, cMath::Vector3Dot(vForward, vLightPos),
+				0,0,0,1);
+
+			const cMatrixf mtxViewProj = cMath::MatrixMul(mtxProj, mtxView);
+
+			for(int lPass=0; lPass<2; ++lPass)
+			{
+				if(lPass == 1 && bWithDynamic == false) break;
+
+				const tCasterCacheSet &setCasters = (lPass == 0)
+					? apLight->GetStaticCasters()
+					: apLight->GetDynamicCasters();
+
+				for(iRenderable *pObject : setCasters)
+				{
+					iVertexBuffer *pVtxBuffer = pObject->GetVertexBuffer();
+					if(pVtxBuffer == NULL) continue;
+
+					mpDepthProgram->SetMatrixf("worldViewProj",
+						cMath::MatrixMul(mtxViewProj, pObject->GetModelMatrix(NULL)));
+
+					pVtxBuffer->Bind();
+					pVtxBuffer->Draw();
+					pVtxBuffer->UnBind();
+				}
+			}
+		}
+
+		mpDepthProgram->UnBind();
+
+		const cVector2f vScreenSize = _llGfx->GetScreenSize();
+		mpShadowCube->EndRender((int)vScreenSize.x, (int)vScreenSize.y);
+
+		mRenderSettings.mpVtxBuffer = NULL;
+		mRenderSettings.mpProgram = NULL;
+	}
+
+	//-----------------------------------------------------------------------
+
 	void cRenderer3D::RenderLight(cCamera *apCamera)
 	{
 		if(mDebugFlags & eRendererDebugFlag_DisableLighting) return;
@@ -643,6 +738,34 @@ namespace hpl {
 		mRenderSettings.mpProgramOverride = mpLightProgram;
 		mRenderSettings.mbNeedsLightingMatrices = true;
 
+		//////////////////////////////////////////////
+		// Pick the point lights that get a cube map: the nearest few, which is
+		// how the light in the player's hand always ends up in the set.
+		std::set<iLight3D*> setCubeShadowed;
+		if(mpShadowCube && mpShadowCube->IsValid() && mpDepthProgram
+			&& mRenderSettings.mShowShadows != eRendererShowShadows_None)
+		{
+			std::vector<std::pair<float, iLight3D*>> vCandidates;
+
+			cLight3DIterator candIt = mpRenderList->GetLightIt();
+			while(candIt.HasNext())
+			{
+				iLight3D *pCandidate = candIt.Next();
+				if(pCandidate->GetLightType() != eLight3DType_Point) continue;
+				if(pCandidate->GetCastShadows() == false) continue;
+
+				vCandidates.push_back({
+					cMath::Vector3DistSqr(pCandidate->GetWorldPosition(), apCamera->GetPosition()),
+					pCandidate });
+			}
+
+			std::sort(vCandidates.begin(), vCandidates.end(),
+				[](const auto &a, const auto &b) { return a.first < b.first; });
+
+			const int lTake = std::min((int)vCandidates.size(), kMaxShadowedPointLights);
+			for(int i=0; i<lTake; ++i) setCubeShadowed.insert(vCandidates[i].second);
+		}
+
 		cLight3DIterator lightIt = mpRenderList->GetLightIt();
 
 		int lLightCount=0;
@@ -659,16 +782,30 @@ namespace hpl {
 			if(mbLog) Log("-----Light %s ------\n", pLight->GetName().c_str());
 
 			//////////////////////////////////////////////
-			// Shadow map, spot lights only for now.
-			bool bShadowed = false;
-			if(pLight->GetLightType() == eLight3DType_Spot && pLight->GetCastShadows()
-				&& mRenderSettings.mShowShadows != eRendererShowShadows_None
-				&& mpDepthProgram && mpShadowMap && mpShadowMap->IsValid())
-			{
-				RenderShadowMap(static_cast<cLight3DSpot*>(pLight));
-				bShadowed = true;
+			// Shadow map: a single projection for a spot, six faces for a point.
+			float fShadowKind = 0.0f;
 
-				// RenderShadowMap left its own target and program state behind.
+			const bool bSpotShadow = pLight->GetLightType() == eLight3DType_Spot
+				&& pLight->GetCastShadows()
+				&& mRenderSettings.mShowShadows != eRendererShowShadows_None
+				&& mpDepthProgram && mpShadowMap && mpShadowMap->IsValid();
+
+			const bool bCubeShadow = setCubeShadowed.count(pLight) > 0;
+
+			if(bSpotShadow || bCubeShadow)
+			{
+				if(bSpotShadow)
+				{
+					RenderShadowMap(static_cast<cLight3DSpot*>(pLight));
+					fShadowKind = 1.0f;
+				}
+				else
+				{
+					RenderShadowCube(pLight);
+					fShadowKind = 2.0f;
+				}
+
+				// The depth pass left its own target and program state behind.
 				_llGfx->SetDepthTestFunc(eDepthTestFunc_Equal);
 				_llGfx->SetDepthWriteActive(false);
 				ApplyBlendMode(_llGfx, eMaterialBlendMode_Add);
@@ -677,14 +814,20 @@ namespace hpl {
 				mpLightProgram->SetFloat("alphaCutoff", 0.6f);
 				mRenderSettings.mpProgram = mpLightProgram;
 
-				mpShadowMap->BindAsTexture(2);
+				if(bSpotShadow) mpShadowMap->BindAsTexture(2);
+				else            mpShadowCube->BindAsTexture(3);
 			}
 
 			// Scissors the pass down to the light's screen footprint.
 			if(pLight->BeginDraw(&mRenderSettings, _llGfx))
 			{
-				mpLightProgram->SetFloat("shadowStrength", bShadowed ? 1.0f : 0.0f);
-				if(bShadowed)
+				mpLightProgram->SetFloat("shadowKind", fShadowKind);
+				if(fShadowKind > 1.5f)
+				{
+					mpLightProgram->SetFloat("shadowNear", kShadowCubeNear);
+					mpLightProgram->SetFloat("shadowFar", pLight->GetFarAttenuation());
+				}
+				else if(fShadowKind > 0.5f)
 				{
 					mpLightProgram->SetMatrixf("lightViewProj",
 						static_cast<cLight3DSpot*>(pLight)->GetViewProjMatrix());
