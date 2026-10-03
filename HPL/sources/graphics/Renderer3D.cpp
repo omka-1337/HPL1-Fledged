@@ -32,6 +32,7 @@
 #include "scene/World3D.h"
 #include "scene/RenderableContainer.h"
 #include "scene/Light3D.h"
+#include "scene/Light3DSpot.h"
 #include "graphics/Material_Universal.h"
 #include "graphics/RenderState.h"
 #include "math/BoundingVolume.h"
@@ -102,6 +103,12 @@ namespace hpl {
 			Error("Couldn't load Diffuse shader\n");
 		}
 
+		mpLightProgram = _programManager->CreateProgram("Light.vert", "Light.frag");
+		if(mpLightProgram==NULL)
+		{
+			Error("Could not load light program - the scene will stay unlit!\n");
+		}
+
 		/////////////////////////////////////////////
 		//Create sky box graphics.
 
@@ -118,6 +125,7 @@ namespace hpl {
 		delete mpRenderList;
 
 		if(mpDiffuseProgram) _programManager->Destroy(mpDiffuseProgram);
+		if(mpLightProgram) _programManager->Destroy(mpLightProgram);
 
 		if(mpSkyBox) delete mpSkyBox;
 		if(mpSkyBoxTexture && mbAutoDestroySkybox)
@@ -259,7 +267,7 @@ namespace hpl {
 
 		////////////////////////////
 		//Render lighting
-//		RenderLight(apCamera);
+		RenderLight(apCamera);
 
 
 		////////////////////////////
@@ -545,11 +553,26 @@ namespace hpl {
 	void cRenderer3D::RenderLight(cCamera *apCamera)
 	{
 		if(mDebugFlags & eRendererDebugFlag_DisableLighting) return;
+		if(mpLightProgram == NULL) return;
 		if(mbLog) Log("Rendering Lighting:\n");
 
 		mRenderSettings.mChannelMode = eMaterialChannelMode_RGBA;
 		_llGfx->SetColorWriteActive(true, true, true, true);
+
+		// The ambient pass already laid down exact depth for this geometry, so
+		// match it rather than write it again, and sum each light on top.
 		_llGfx->SetDepthTestFunc(eDepthTestFunc_Equal);
+		_llGfx->SetDepthWriteActive(false);
+		ApplyBlendMode(_llGfx, eMaterialBlendMode_Add);
+		mRenderSettings.mBlendMode = eMaterialBlendMode_Add;
+
+		// Drive the whole tree with the light shader instead of each material's
+		// own program, and bind it once for every light.
+		mpLightProgram->Bind();
+		mpLightProgram->SetFloat("alphaCutoff", 0.6f);
+		mRenderSettings.mpProgram = mpLightProgram;
+		mRenderSettings.mpProgramSetup = NULL;
+		mRenderSettings.mpProgramOverride = mpLightProgram;
 
 		cLight3DIterator lightIt = mpRenderList->GetLightIt();
 
@@ -560,26 +583,54 @@ namespace hpl {
 
 			iLight3D* pLight = lightIt.Next();
 
-			/*
 			if(mpRenderList->GetLightObjects(lLightCount)==0)
 			{
 				lLightCount++;
 				continue;
 			}
 
-			if(mbLog) Log("-----Light %s/%d ------\n",pLight->GetName().c_str(), (size_t)pLight);
+			if(mbLog) Log("-----Light %s ------\n", pLight->GetName().c_str());
 
-			cRenderNode* pNode = mpRenderList->GetRootNode(eRenderListDrawType_Normal);
-
+			// Scissors the pass down to the light's screen footprint.
 			if(pLight->BeginDraw(&mRenderSettings, _llGfx))
 			{
+				const cVector3f vPos = pLight->GetWorldPosition();
+				const cColor col = pLight->GetDiffuseColor();
+				const float fRadius = pLight->GetFarAttenuation();
+
+				mpLightProgram->SetVec3f("lightPos", vPos.x, vPos.y, vPos.z);
+				mpLightProgram->SetVec3f("lightColor", col.r, col.g, col.b);
+				mpLightProgram->SetFloat("lightRadius", fRadius > 0.0f ? fRadius : 1.0f);
+
+				if(pLight->GetLightType() == eLight3DType_Spot)
+				{
+					cLight3DSpot *pSpot = static_cast<cLight3DSpot*>(pLight);
+					const cVector3f vDir = pSpot->GetViewMatrix().GetForward() * -1.0f;
+
+					mpLightProgram->SetFloat("lightIsSpot", 1.0f);
+					mpLightProgram->SetVec3f("lightDir", vDir.x, vDir.y, vDir.z);
+					mpLightProgram->SetFloat("lightCosFov", cos(pSpot->GetFOV() * 0.5f));
+				}
+				else
+				{
+					mpLightProgram->SetFloat("lightIsSpot", 0.0f);
+				}
+
+				cRenderNode* pNode = mpRenderList->GetRootNode();
 				pNode->Render(&mRenderSettings);
 			}
 			pLight->EndDraw(&mRenderSettings, _llGfx);
-			*/
 
 			lLightCount++;
 		}
+
+		mRenderSettings.mpProgramOverride = NULL;
+		mpLightProgram->UnBind();
+		mRenderSettings.mpProgram = NULL;
+
+		_llGfx->SetBlendActive(false);
+		_llGfx->SetDepthWriteActive(true);
+		_llGfx->SetDepthTestFunc(eDepthTestFunc_LessOrEqual);
 	}
 
 	//-----------------------------------------------------------------------

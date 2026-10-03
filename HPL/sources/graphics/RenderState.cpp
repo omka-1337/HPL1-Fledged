@@ -196,6 +196,11 @@ namespace hpl {
 
 	void iRenderState::SetGPUProgMode(cRenderSettings* apSettings)
 	{
+		// A pass may drive the whole tree with one program of its own; it has
+		// already bound it and set its uniforms, so there is nothing to do.
+		if(apSettings->mpProgramOverride)
+			return;
+
 		if(mpProgram != apSettings->mpProgram)
 		{
 			if(apSettings->mbLog){
@@ -278,6 +283,13 @@ namespace hpl {
 			auto mvMatrix = cMath::MatrixMul(apSettings->mpCamera->GetViewMatrix(), modelMatrix);
 			auto mvpMatrix = cMath::MatrixMul(apSettings->mpCamera->GetProjectionMatrix(), mvMatrix);
 			apSettings->mpProgram->SetMatrixf("worldViewProj", mvpMatrix);
+
+			// Lighting is evaluated in world space, so that pass also needs the
+			// model matrix and a normal matrix. Shaders that declare neither
+			// just ignore these (a missing uniform is a silent no-op).
+			apSettings->mpProgram->SetMatrixf("model", modelMatrix);
+			apSettings->mpProgram->SetMatrixf("normalMatrix",
+				cMath::MatrixTranspose(cMath::MatrixInverse(modelMatrix)));
 
 			if (apSettings->mpProgramSetup)
 			{

@@ -98,6 +98,13 @@ namespace hpl {
 		iGpuProgram* mpProgram;
 		iMaterialProgramSetup* mpProgramSetup;
 
+		/**
+		 * When set, the state tree binds this instead of each material's own
+		 * program and leaves its uniforms alone. The light pass uses it to
+		 * re-draw the same geometry with the lighting shader.
+		 */
+		iGpuProgram* mpProgramOverride;
+
 		cColor mAmbientColor;
 
 		iTexture* mpTexture[MAX_TEXTUREUNITS];
@@ -180,6 +187,8 @@ namespace hpl {
 		float mfRenderTime;
 
 		iGpuProgram *mpDiffuseProgram;
+
+		iGpuProgram* mpLightProgram;
 
 		cRenderSettings mRenderSettings;
 
