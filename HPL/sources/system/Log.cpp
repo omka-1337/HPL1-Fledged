@@ -4,6 +4,7 @@
  */
 
 #include "system/Log.h"
+#include <cstdarg>
 #include <cstdio>
 #include <string>
 

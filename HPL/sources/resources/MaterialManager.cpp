@@ -18,6 +18,7 @@
  */
 
 #include "resources/MaterialManager.h"
+#include <memory>
 #include "resources/TextureManager.h"
 #include "resources/GpuProgramManager.h"
 #include "resources/FileSearcher.h"

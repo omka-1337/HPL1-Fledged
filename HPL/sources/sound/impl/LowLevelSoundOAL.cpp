@@ -4,6 +4,7 @@
  */
 
 #include "system/Log.h"
+#include <cstring>
 #include "sound/impl/LowLevelSoundOAL.h"
 #include "sound/impl/OALSoundData.h"
 #include "sound/impl/OALSoundChannel.h"

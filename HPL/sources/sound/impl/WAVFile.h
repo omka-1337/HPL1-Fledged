@@ -7,6 +7,7 @@
 #define HPL_WAVFILE_H
 
 #include "system/StringTypes.h"
+#include <cstdint>
 
 namespace hpl {
 

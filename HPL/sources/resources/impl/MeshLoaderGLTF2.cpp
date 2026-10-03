@@ -4,6 +4,7 @@
  */
 
 #include "resources/impl/MeshLoaderGLTF2.h"
+#include <cstring>
 
 #include "system/Log.h"
 #include "system/Files.h"

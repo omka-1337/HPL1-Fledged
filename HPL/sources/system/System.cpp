@@ -28,12 +28,16 @@
 #else
 	#include <clocale>
 	#include <langinfo.h>
+	#include <strings.h>
 	#include <unistd.h>
 #endif
+
+#include <cstring>
 
 #include <cstdio>
 #include <cstdarg>
 #include <cstdlib>
+#include <climits>
 #include <sys/stat.h>
 #include <time.h>
 
@@ -48,20 +52,18 @@ namespace hpl {
 #ifdef __linux__
 	tString GetDataDir()
 	{
-		tString temp;
-		BrInitError error;
-		if (!br_init (&error)) {
-			// Log non-fatal error
-			printf("*** BinReloc failed to initialize. Error: %d\n", error);
-		} else {
-			char *exedir;
-			exedir = br_find_exe_dir(NULL);
-			if (exedir) {
-				temp = exedir;
-				free(exedir);
-			}
+		char exePath[PATH_MAX];
+		ssize_t len = readlink("/proc/self/exe", exePath, sizeof(exePath) - 1);
+		if (len < 0) {
+			printf("*** Could not resolve /proc/self/exe\n");
+			return "";
 		}
-		return temp;
+		exePath[len] = '\0';
+
+		char *lastSlash = strrchr(exePath, '/');
+		if (lastSlash == NULL) return "";
+		*lastSlash = '\0';
+		return tString(exePath);
 	}
 #endif
 } // ns hpl
@@ -262,8 +264,15 @@ namespace hpl {
 
 	uint64_t GetAppTimeMS()
 	{
-		// TODO: use regular clock_gettime for other unixen and QPC stuff for Win
-		return (clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW) / 1000000UL) - baseTimeMS;
+		// TODO: QPC stuff for Win
+#ifdef __APPLE__
+		uint64_t nowNS = clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW);
+#else
+		struct timespec ts;
+		clock_gettime(CLOCK_MONOTONIC, &ts);
+		uint64_t nowNS = static_cast<uint64_t>(ts.tv_sec) * 1000000000UL + ts.tv_nsec;
+#endif
+		return (nowNS / 1000000UL) - baseTimeMS;
 	}
 
 	//-----------------------------------------------------------------------

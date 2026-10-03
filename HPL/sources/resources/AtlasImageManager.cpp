@@ -17,6 +17,7 @@
  * along with HPL1 Engine.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "resources/AtlasImageManager.h"
+#include <algorithm>
 #include "resources/ResourceImage.h"
 #include "resources/FrameBitmap.h"
 #include "graphics/LowLevelGraphics.h"

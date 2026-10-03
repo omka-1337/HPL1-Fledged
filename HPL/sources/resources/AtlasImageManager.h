@@ -19,6 +19,8 @@
 #ifndef HPL_ATLAS_IMAGEMANAGER_H
 #define HPL_ATLAS_IMAGEMANAGER_H
 
+#include <memory>
+
 #include "resources/ResourceManager.h"
 #include "resources/FrameBitmap.h"
 #include "math/MathTypes.h"

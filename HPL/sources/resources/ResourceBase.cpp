@@ -18,6 +18,7 @@
  */
 
 #include "resources/ResourceBase.h"
+#include <ctime>
 #include "system/Log.h"
 
 namespace hpl {

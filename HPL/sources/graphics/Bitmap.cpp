@@ -5,6 +5,7 @@
 
 #include "graphics/Bitmap.h"
 #include <algorithm>
+#include <cstring>
 
 namespace hpl {
 

@@ -17,6 +17,7 @@
  * along with HPL1 Engine.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "graphics/FontData.h"
+#include <cstdarg>
 
 #include "graphics/GraphicsDrawer.h"
 #include "resources/TextureManager.h"
@@ -139,7 +140,6 @@ namespace hpl {
 			_glyphs.insert({
 				lId,
 				{
-					.page = lPage,
 					.offset = vOffset,
 					.size = vSize,
 					.xAdvance = unitAdvance,
@@ -148,7 +148,8 @@ namespace hpl {
 						.uv1 { uvRight, uvTop },
 						.uv2 { uvRight, uvBottom },
 						.uv3 { uvLeft, uvBottom }
-					}
+					},
+					.page = lPage
 				}
 			});
 		}
@@ -194,11 +195,11 @@ namespace hpl {
 
 				_drawer->Draw({
 					.texture = _pages[glyph.page],
+					.material = eGfxMaterial::Text,
 					.mvPosition = vPos + vOffset,
 					.mvSize = vSize,
 					.mColor = aCol,
-					.uvs = glyph.uvs,
-					.material = eGfxMaterial::Text
+					.uvs = glyph.uvs
 				});
 
 				vPos.x += glyph.xAdvance * avSize.x;

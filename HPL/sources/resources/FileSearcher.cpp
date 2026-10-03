@@ -4,6 +4,7 @@
  */
 
 #include "resources/FileSearcher.h"
+#include <algorithm>
 
 #include "system/String.h"
 #include "system/Files.h"

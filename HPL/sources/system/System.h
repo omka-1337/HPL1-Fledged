@@ -20,6 +20,7 @@
 #define HPL_SYSTEM_H
 
 #include "system/StringTypes.h"
+#include <cstdint>
 
 namespace hpl {
 

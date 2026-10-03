@@ -20,6 +20,7 @@
 #define HPL_RESOURCEMANAGER_H
 
 #include "system/StringTypes.h"
+#include <cstdint>
 
 #include <unordered_map>
 #include <vector>

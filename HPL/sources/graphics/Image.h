@@ -6,6 +6,9 @@
 #ifndef HPL_IMAGE_H
 #define HPL_IMAGE_H
 
+#include <cstdint>
+#include <vector>
+
 #include "graphics/PixelFormat.h"
 #include "resources/ResourceBase.h"
 

@@ -20,6 +20,7 @@
 #define HPL_SERIALIZE_CLASS_H
 
 #include "system/StringTypes.h"
+#include <vector>
 
 #include <cstddef>
 #include <map>
