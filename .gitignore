@@ -17,3 +17,6 @@ rehatched/**/*.mat
 rehatched/**/*.ent
 rehatched/**/*.ogg
 rehatched/**/*.snt
+
+# local test dir: symlinks to retail data + built binary
+/run/
