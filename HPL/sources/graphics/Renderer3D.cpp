@@ -49,6 +49,9 @@ namespace hpl {
 
 	cRenderSettings::cRenderSettings()
 	{
+		mpProgramOverride = NULL;
+		mbNeedsLightingMatrices = false;
+
 		mbFogActive = false;
 		mfFogStart = 5.0f;
 		mfFogEnd = 5.0f;
@@ -151,6 +154,8 @@ namespace hpl {
 		mChannelMode = eMaterialChannelMode_RGBA;
 
 		mpProgram = NULL;
+		mpProgramOverride = NULL;
+		mbNeedsLightingMatrices = false;
 
 		mpSector = NULL;
 
@@ -573,6 +578,7 @@ namespace hpl {
 		mRenderSettings.mpProgram = mpLightProgram;
 		mRenderSettings.mpProgramSetup = NULL;
 		mRenderSettings.mpProgramOverride = mpLightProgram;
+		mRenderSettings.mbNeedsLightingMatrices = true;
 
 		cLight3DIterator lightIt = mpRenderList->GetLightIt();
 
@@ -623,6 +629,7 @@ namespace hpl {
 		}
 
 		mRenderSettings.mpProgramOverride = NULL;
+		mRenderSettings.mbNeedsLightingMatrices = false;
 		mpLightProgram->UnBind();
 		mRenderSettings.mpProgram = NULL;
 

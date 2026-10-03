@@ -105,6 +105,13 @@ namespace hpl {
 		 */
 		iGpuProgram* mpProgramOverride;
 
+		/**
+		 * Set by the light pass. Off, SetMatrixMode skips the model and normal
+		 * matrices: shaders that do not declare them would make SetMatrixf warn
+		 * once per object per frame, and the normal matrix costs an inverse.
+		 */
+		bool mbNeedsLightingMatrices;
+
 		cColor mAmbientColor;
 
 		iTexture* mpTexture[MAX_TEXTUREUNITS];

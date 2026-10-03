@@ -284,12 +284,14 @@ namespace hpl {
 			auto mvpMatrix = cMath::MatrixMul(apSettings->mpCamera->GetProjectionMatrix(), mvMatrix);
 			apSettings->mpProgram->SetMatrixf("worldViewProj", mvpMatrix);
 
-			// Lighting is evaluated in world space, so that pass also needs the
-			// model matrix and a normal matrix. Shaders that declare neither
-			// just ignore these (a missing uniform is a silent no-op).
-			apSettings->mpProgram->SetMatrixf("model", modelMatrix);
-			apSettings->mpProgram->SetMatrixf("normalMatrix",
-				cMath::MatrixTranspose(cMath::MatrixInverse(modelMatrix)));
+			// Lighting is evaluated in world space, so that pass needs the model
+			// matrix and a normal matrix as well.
+			if(apSettings->mbNeedsLightingMatrices)
+			{
+				apSettings->mpProgram->SetMatrixf("model", modelMatrix);
+				apSettings->mpProgram->SetMatrixf("normalMatrix",
+					cMath::MatrixTranspose(cMath::MatrixInverse(modelMatrix)));
+			}
 
 			if (apSettings->mpProgramSetup)
 			{
