@@ -1,0 +1,19 @@
+build
+DerivedData
+*~
+.DS_Store
+Thumbs.db
+xcuserdata
+
+node_modules
+
+# don't commit local overrides due to asset copyright
+rehatched/**/*.jpg
+rehatched/**/*.png
+rehatched/**/*.bmp
+rehatched/**/*.tga
+rehatched/**/*.dds
+rehatched/**/*.mat
+rehatched/**/*.ent
+rehatched/**/*.ogg
+rehatched/**/*.snt
