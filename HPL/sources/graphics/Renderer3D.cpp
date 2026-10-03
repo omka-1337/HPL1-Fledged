@@ -32,6 +32,8 @@
 #include "scene/World3D.h"
 #include "scene/RenderableContainer.h"
 #include "scene/Light3D.h"
+#include "graphics/Material_Universal.h"
+#include "graphics/RenderState.h"
 #include "math/BoundingVolume.h"
 #include "graphics/GPUProgram.h"
 #include "system/Log.h"
@@ -598,13 +600,67 @@ namespace hpl {
 	void cRenderer3D::RenderTrans(cCamera *apCamera)
 	{
 		if(mbLog) Log("Rendering Transparent:\n");
-		cVector3f vForward = apCamera->GetForward();
 
 		cTransperantObjectIterator it = mpRenderList->GetTransperantIterator();
+		if(it.HasNext() == false) return;
+
+		// Blended surfaces read what is already in the framebuffer, so they
+		// come after the opaque pass, must not write depth, and are drawn back
+		// to front - which is the order the set already holds them in.
+		_llGfx->SetDepthWriteActive(false);
+
+		iGpuProgram *pBoundProgram = NULL;
+
 		while(it.HasNext())
 		{
-			// render object
+			iRenderable *pObject = it.Next();
+
+			iMaterial *pMaterial = pObject->GetMaterial();
+			iVertexBuffer *pVtxBuffer = pObject->GetVertexBuffer();
+			if(pMaterial == NULL || pVtxBuffer == NULL) continue;
+
+			iGpuProgram *pProgram = pMaterial->GetProgramEx();
+			if(pProgram == NULL) continue;
+
+			if(mbLog) Log("Trans object '%s'\n", pObject->GetName().c_str());
+
+			ApplyBlendMode(_llGfx, pMaterial->GetBlendMode());
+
+			for(int i=0; i<MAX_TEXTUREUNITS; ++i)
+				_llGfx->SetTexture(i, pMaterial->GetTexture(i));
+
+			if(pProgram != pBoundProgram)
+			{
+				if(pBoundProgram) pBoundProgram->UnBind();
+				pProgram->Bind();
+				pBoundProgram = pProgram;
+			}
+
+			if(iMaterialProgramSetup *pSetup = pMaterial->GetProgramSetup())
+				pSetup->Setup(pProgram, &mRenderSettings);
+
+			// Overrides the cutoff the shared setup just wrote: these are the
+			// materials whose gradients must survive.
+			if(Material_Universal *pUniversal = dynamic_cast<Material_Universal*>(pMaterial))
+				pProgram->SetFloat("alphaCutoff", pUniversal->GetAlphaCutoff());
+
+			auto modelMatrix = pObject->GetModelMatrix(apCamera);
+			auto mvMatrix = cMath::MatrixMul(apCamera->GetViewMatrix(), modelMatrix);
+			auto mvpMatrix = cMath::MatrixMul(apCamera->GetProjectionMatrix(), mvMatrix);
+			pProgram->SetMatrixf("worldViewProj", mvpMatrix);
+
+			pVtxBuffer->Bind();
+			pVtxBuffer->Draw();
+			pVtxBuffer->UnBind();
 		}
+
+		if(pBoundProgram) pBoundProgram->UnBind();
+
+		_llGfx->SetBlendActive(false);
+		_llGfx->SetDepthWriteActive(true);
+
+		// The settings cache was bypassed above; Render() resets it right
+		// after this call, so the state tree starts the next frame clean.
 	}
 
 	//-----------------------------------------------------------------------

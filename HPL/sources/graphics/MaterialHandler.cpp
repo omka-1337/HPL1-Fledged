@@ -62,7 +62,7 @@ namespace hpl {
 		{
 			if (matType->IsCorrect(asMatName))
 			{
-				return matType->Create(asName, _llGfx, _textureManager, _programManager);
+				return matType->Create(asName, asMatName, _llGfx, _textureManager, _programManager);
 			}
 		}
 

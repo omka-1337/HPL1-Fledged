@@ -25,6 +25,15 @@
 
 namespace hpl {
 
+	class iLowLevelGraphics;
+
+	/**
+	 * Apply a material blend mode to the pipeline.
+	 * Shared by the render-state tree and the transparent pass.
+	 */
+	void ApplyBlendMode(iLowLevelGraphics* apLowLevel, eMaterialBlendMode aMode);
+
+
 	class cRenderSettings;
 	class iRenderable;
 	class iLight3D;

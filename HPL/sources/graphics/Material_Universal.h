@@ -13,6 +13,7 @@ namespace hpl {
 	{
 	public:
 		Material_Universal(const tString& asName,
+						   const tString& asTypeName,
 						   iLowLevelGraphics* apLowLevelGraphics,
 						   cTextureManager *apTextureManager,
 						   cGpuProgramManager* apProgramManager);
@@ -29,8 +30,16 @@ namespace hpl {
 
 		iTexture* GetTexture(int alUnit) override;
 
+		/**
+		 * Alpha below this is discarded in the fragment shader. Blended
+		 * materials disable the test (0) so their soft edges survive.
+		 */
+		float GetAlphaCutoff() const { return _alphaCutoff; }
+
 	protected:
 		iGpuProgram* _program;
+		eMaterialBlendMode _blendMode;
+		float _alphaCutoff;
 	};
 
 	class MaterialType_Universal : public iMaterialType
@@ -40,7 +49,8 @@ namespace hpl {
 			return true;
 		}
 
-		iMaterial* Create(const tString& asName,iLowLevelGraphics* apLowLevelGraphics,
+		iMaterial* Create(const tString& asName, const tString& asTypeName,
+			iLowLevelGraphics* apLowLevelGraphics,
 			cTextureManager *apTextureManager, cGpuProgramManager* apProgramManager);
 
 	private:

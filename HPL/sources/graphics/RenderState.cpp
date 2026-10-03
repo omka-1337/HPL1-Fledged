@@ -120,55 +120,52 @@ namespace hpl {
 
 	//-----------------------------------------------------------------------
 
+	void ApplyBlendMode(iLowLevelGraphics* apLowLevel, eMaterialBlendMode aMode)
+	{
+		if(aMode == eMaterialBlendMode_None)
+		{
+			apLowLevel->SetBlendActive(false);
+			return;
+		}
+
+		apLowLevel->SetBlendActive(true);
+
+		switch(aMode)
+		{
+		case eMaterialBlendMode_Add:
+			apLowLevel->SetBlendFunc(eBlendFunc_One,eBlendFunc_One);
+			break;
+		case eMaterialBlendMode_Replace:
+			apLowLevel->SetBlendFunc(eBlendFunc_One,eBlendFunc_Zero);
+			break;
+		case eMaterialBlendMode_Mul:
+			apLowLevel->SetBlendFunc(eBlendFunc_Zero,eBlendFunc_SrcColor);
+			break;
+		case eMaterialBlendMode_MulX2:
+			apLowLevel->SetBlendFunc(eBlendFunc_DestColor,eBlendFunc_SrcColor);
+			break;
+		case eMaterialBlendMode_Alpha:
+			apLowLevel->SetBlendFunc(eBlendFunc_SrcAlpha,eBlendFunc_OneMinusSrcAlpha);
+			break;
+		case eMaterialBlendMode_DestAlphaAdd:
+			apLowLevel->SetBlendFunc(eBlendFunc_DestAlpha,eBlendFunc_One);
+			break;
+		default:
+			Warning("Invalid blend mode %d\n", aMode);
+			break;
+		}
+	}
+
+	//-----------------------------------------------------------------------
+
 	void iRenderState::SetBlendMode(cRenderSettings* apSettings)
 	{
 		if(mBlendMode != apSettings->mBlendMode)
 		{
-			if(apSettings->mbLog)Log("Setting blend mode: ");
+			if(apSettings->mbLog)Log("Setting blend mode: %d\n", mBlendMode);
 			apSettings->mBlendMode = mBlendMode;
 
-			if(mBlendMode == eMaterialBlendMode_None)
-			{
-				apSettings->mpLowLevel->SetBlendActive(false);
-				if(apSettings->mbLog)Log("None");
-			}
-			else
-			{
-				apSettings->mpLowLevel->SetBlendActive(true);
-
-				switch(mBlendMode)
-				{
-				case eMaterialBlendMode_Add:
-					apSettings->mpLowLevel->SetBlendFunc(eBlendFunc_One,eBlendFunc_One);
-					if(apSettings->mbLog)Log("Add");
-					break;
-				case eMaterialBlendMode_Replace:
-					apSettings->mpLowLevel->SetBlendFunc(eBlendFunc_One,eBlendFunc_Zero);
-					if(apSettings->mbLog)Log("Replace");
-					break;
-				case eMaterialBlendMode_Mul:
-					apSettings->mpLowLevel->SetBlendFunc(eBlendFunc_Zero,eBlendFunc_SrcColor);
-					if(apSettings->mbLog)Log("Mul");
-					break;
-				case eMaterialBlendMode_MulX2:
-					apSettings->mpLowLevel->SetBlendFunc(eBlendFunc_DestColor,eBlendFunc_SrcColor);
-					if(apSettings->mbLog)Log("MulX2");
-					break;
-				case eMaterialBlendMode_Alpha:
-					apSettings->mpLowLevel->SetBlendFunc(eBlendFunc_SrcAlpha,eBlendFunc_OneMinusSrcAlpha);
-					if(apSettings->mbLog)Log("Alpha");
-					break;
-				case eMaterialBlendMode_DestAlphaAdd:
-					apSettings->mpLowLevel->SetBlendFunc(eBlendFunc_DestAlpha,eBlendFunc_One);
-					if(apSettings->mbLog)Log("DestAlphaAdd");
-					break;
-				default:
-					if(apSettings->mbLog)Log("Invalid Blend Mode !");
-					break;
-				}
-			}
-
-			if(apSettings->mbLog)Log("\n");
+			ApplyBlendMode(apSettings->mpLowLevel, mBlendMode);
 		}
 
 		if(mChannelMode != apSettings->mChannelMode)
