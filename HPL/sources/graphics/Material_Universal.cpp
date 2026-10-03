@@ -93,7 +93,9 @@ namespace hpl {
 		// cutoff that alpha-tested geometry relies on would eat its gradient.
 		_alphaCutoff = traits.transparent ? 0.0f : 0.6f;
 
-		_program = mpProgramManager->CreateProgram("Universal.vert", "Universal.frag");
+		// Deferred to GetProgramEx(): the textures are attached after the
+		// material is constructed, and the shader choice depends on them.
+		_program = NULL;
 	}
 
 	//-----------------------------------------------------------------------
@@ -113,6 +115,22 @@ namespace hpl {
 	//-----------------------------------------------------------------------
 
 	iGpuProgram* Material_Universal::GetProgramEx() {
+		if(_program == NULL)
+		{
+			const bool bHasIllumination = mvTexture[eMaterialTexture_Illumination] != NULL;
+
+			_program = mpProgramManager->CreateProgram("Universal.vert",
+				bHasIllumination ? "UniversalIllum.frag" : "Universal.frag");
+
+			// Programs are cached by name, so this costs one extra program
+			// overall, and it keeps the glow out of the common shader.
+			if(_program && bHasIllumination)
+			{
+				_program->Bind();
+				_program->SetTextureBindingIndex("illuminationMap", 1);
+				_program->UnBind();
+			}
+		}
 		return _program;
 	}
 
@@ -150,6 +168,8 @@ namespace hpl {
 	{
 		if (alUnit == 0)
 			return mvTexture[eMaterialTexture_Diffuse];
+		if (alUnit == 1)
+			return mvTexture[eMaterialTexture_Illumination];
 		return NULL;
 	}
 

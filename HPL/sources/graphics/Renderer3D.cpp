@@ -583,11 +583,9 @@ namespace hpl {
 
 			iLight3D* pLight = lightIt.Next();
 
-			if(mpRenderList->GetLightObjects(lLightCount)==0)
-			{
-				lLightCount++;
-				continue;
-			}
+			// cRenderList::Compile() never fills mvObjectsPerLight - the loop
+			// that counted objects per light is commented out - so the old
+			// "skip lights that reach nothing" test rejected every light.
 
 			if(mbLog) Log("-----Light %s ------\n", pLight->GetName().c_str());
 

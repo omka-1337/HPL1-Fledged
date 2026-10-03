@@ -36,6 +36,7 @@ namespace hpl {
 		eMaterialTexture_Normal,
 		eMaterialTexture_Specular,
 		eMaterialTexture_Refraction,	// used once (more often in black plague)
+		eMaterialTexture_Illumination,	// glowing parts: lamps, screens, dials
 		eMaterialTexture_None
 	};
 

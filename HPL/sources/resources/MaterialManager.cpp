@@ -50,8 +50,9 @@ namespace hpl {
 		else if (typeLower == "nmap") return eMaterialTexture_Normal;
 		else if (typeLower == "specular") return eMaterialTexture_Specular;
 		else if (typeLower == "refraction") return eMaterialTexture_Refraction;
-		// Special case: "illumination" is unused but is present without data in many .mat files
-		else if (typeLower == "illumination") return eMaterialTexture_None;
+		// Often declared with an empty File, but 38 materials do carry one and
+		// look wrong without it. An empty File is dropped before this matters.
+		else if (typeLower == "illumination") return eMaterialTexture_Illumination;
 
 		Warning("Skipping unsupported texture type `%s`\n", type.c_str());
 		return eMaterialTexture_None;
