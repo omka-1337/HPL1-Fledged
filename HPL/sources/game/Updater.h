@@ -19,6 +19,7 @@
 #ifndef HPL_UPDATER_H
 #define HPL_UPDATER_H
 
+#include <cstdint>
 #include <map>
 #include <list>
 
@@ -41,6 +42,13 @@ namespace hpl {
 		~cUpdater();
 
 		void Reset();
+
+		/**
+		 * Per-subsystem timing for the frame tracer (see cGame::Run).
+		 * Off by default; when on, Update() accumulates how long each
+		 * updateable took so a slow frame can name the culprit.
+		 */
+		void SetTraceUpdates(bool abX) { mbTraceUpdates = abX; }
 
 		void OnDraw();
 		void OnPostSceneDraw();
@@ -93,6 +101,8 @@ namespace hpl {
 
 		tUpdateableList *mpCurrentUpdates;
 		tUpdateableList mlstGlobalUpdateableList;
+
+		bool mbTraceUpdates = false;
 	};
 };
 #endif // HPL_UPDATER_H

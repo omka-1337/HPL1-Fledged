@@ -40,6 +40,8 @@
 #include "system/String.h"
 #include "system/STLHelpers.h"
 #include "system/UpdateTimerMacros.h"
+#include "system/FrameTrace.h"
+#include "system/System.h"
 
 namespace hpl {
 
@@ -256,7 +258,12 @@ namespace hpl {
 
 			if(mpCurrentWorld3D->GetScript())
 			{
+				const bool bTrace = FrameTrace::Enabled();
+				const uint64_t lStart = bTrace ? GetAppTimeMS() : 0;
+
 				mpCurrentWorld3D->GetScript()->Run("OnUpdate()");
+
+				if(bTrace) FrameTrace::Add("mapscript", GetAppTimeMS() - lStart);
 			}
 		}
 	}

@@ -21,6 +21,8 @@
 #include "game/Updateable.h"
 #include "system/Log.h"
 #include "system/UpdateTimerMacros.h"
+#include "system/System.h"
+#include "system/FrameTrace.h"
 
 namespace hpl {
 
@@ -199,7 +201,9 @@ namespace hpl {
 		for(tUpdateableListIt it = mlstGlobalUpdateableList.begin();it!=mlstGlobalUpdateableList.end();++it)
 		{
 			START_TIMING_EX((*it)->GetName().c_str(),game)
+			const uint64_t lStart = mbTraceUpdates ? GetAppTimeMS() : 0;
 			(*it)->Update(afTimeStep);
+			if(mbTraceUpdates) FrameTrace::Add((*it)->GetName(), GetAppTimeMS() - lStart);
 			STOP_TIMING(game)
 		}
 
@@ -209,11 +213,14 @@ namespace hpl {
 			for(tUpdateableListIt it = pList->begin();it!=pList->end();++it)
 			{
 				START_TIMING_EX((*it)->GetName().c_str(),game)
+				const uint64_t lStart = mbTraceUpdates ? GetAppTimeMS() : 0;
 				(*it)->Update(afTimeStep);
+				if(mbTraceUpdates) FrameTrace::Add((*it)->GetName(), GetAppTimeMS() - lStart);
 				STOP_TIMING(game)
 			}
 		}
 	}
+
 
 	//-----------------------------------------------------------------------
 

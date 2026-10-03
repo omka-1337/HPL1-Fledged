@@ -138,8 +138,67 @@ namespace hpl {
 		return success;
 	}
 
+	/**
+	 * True for a bare "Name()" call - no arguments, nothing to evaluate.
+	 */
+	static bool IsPlainCall(const tString& asFuncLine)
+	{
+		const size_t lLen = asFuncLine.size();
+		if(lLen < 3 || asFuncLine[lLen-2] != '(' || asFuncLine[lLen-1] != ')') return false;
+
+		for(size_t i=0; i<lLen-2; ++i)
+		{
+			const char c = asFuncLine[i];
+			const bool bNameChar = (c=='_') || (c>='a'&&c<='z') || (c>='A'&&c<='Z') || (i>0 && c>='0' && c<='9');
+			if(!bNameChar) return false;
+		}
+		return true;
+	}
+
+	//-----------------------------------------------------------------------
+
+	asIScriptFunction* cScriptModule::FindCachedFunc(const tString& asName)
+	{
+		auto it = m_mapFuncCache.find(asName);
+		if(it != m_mapFuncCache.end()) return it->second;
+
+		asIScriptFunction *pFunc = mpModule ? mpModule->GetFunctionByName(asName.c_str()) : NULL;
+		m_mapFuncCache[asName] = pFunc;
+		return pFunc;
+	}
+
+	//-----------------------------------------------------------------------
+
 	bool cScriptModule::Run(const tString& asFuncLine)
 	{
+		// ExecuteString compiles the line into a throwaway function on every
+		// call. The per-frame hooks go through here, so OnUpdate() alone was
+		// recompiling the same source 60 times a second. Resolve a plain
+		// "Name()" call once and then just execute it.
+		if(IsPlainCall(asFuncLine))
+		{
+			asIScriptFunction *pFunc = FindCachedFunc(asFuncLine.substr(0, asFuncLine.size()-2));
+
+			// A nested Run() must not touch a context that is mid-execution.
+			if(pFunc && mpContext->GetState() != asEXECUTION_ACTIVE)
+			{
+				mpContext->Prepare(pFunc);
+
+				const int lResult = mpContext->Execute();
+				if(lResult != asEXECUTION_FINISHED)
+				{
+					if(lResult == asEXECUTION_EXCEPTION)
+						Error("Script exception in '%s': %s\n", asFuncLine.c_str(),
+							mpContext->GetExceptionString());
+					mpContext->Unprepare();
+					return false;
+				}
+
+				mpContext->Unprepare();
+				return true;
+			}
+		}
+
 		ExecuteString(mpEngine, asFuncLine.c_str(), mpModule);
 		return true;
 	}

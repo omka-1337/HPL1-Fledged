@@ -8,9 +8,12 @@
 #include "game/Updateable.h"
 #include "resources/ResourceBase.h"
 
+#include <map>
+
 class asIScriptEngine;
 class asIScriptModule;
 class asIScriptContext;
+class asIScriptFunction;
 
 namespace hpl {
 
@@ -32,10 +35,16 @@ namespace hpl {
 		bool Run(const tString& asFuncLine);
 
 	private:
+		asIScriptFunction* FindCachedFunc(const tString& asName);
+
 		asIScriptEngine *mpEngine;
 		cScriptOutput *mpOutput;
 		asIScriptModule *mpModule;
 		asIScriptContext *mpContext;
+
+		// Resolved once per name; a NULL value means "not a module function",
+		// which is cached too so the lookup is not repeated every frame.
+		std::map<tString, asIScriptFunction*> m_mapFuncCache;
 	};
 
 	class cScript : public iUpdateable

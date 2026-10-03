@@ -18,6 +18,9 @@
  */
 #include "scene/World3D.h"
 
+#include "system/FrameTrace.h"
+#include "system/System.h"
+
 #include "tinyXML/tinyxml.h"
 
 #include "system/String.h"
@@ -151,30 +154,44 @@ namespace hpl {
 
 	void cWorld3D::Update(float afTimeStep)
 	{
+		const bool bTrace = FrameTrace::Enabled();
+		uint64_t lMark = bTrace ? GetAppTimeMS() : 0;
+
+		#define HPL_TRACE_STEP(name) \
+			if(bTrace) { const uint64_t lNow = GetAppTimeMS(); \
+				FrameTrace::Add(name, lNow - lMark); lMark = lNow; }
+
 		START_TIMING(Physics);
 		if(mpPhysicsWorld) mpPhysicsWorld->Update(afTimeStep);
 		STOP_TIMING(Physics);
-
+		HPL_TRACE_STEP("physics")
 
 		START_TIMING(Entities);
 		UpdateEntities(afTimeStep);
 		STOP_TIMING(Entities);
+		HPL_TRACE_STEP("entities")
 
 		START_TIMING(Bodies);
 		UpdateBodies(afTimeStep);
 		STOP_TIMING(Bodies);
+		HPL_TRACE_STEP("bodies")
 
 		START_TIMING(Particles);
 		UpdateParticles(afTimeStep);
 		STOP_TIMING(Particles);
+		HPL_TRACE_STEP("particles")
 
 		START_TIMING(Lights);
 		UpdateLights(afTimeStep);
 		STOP_TIMING(Lights);
+		HPL_TRACE_STEP("lights")
 
 		START_TIMING(SoundEntities);
 		UpdateSoundEntities(afTimeStep);
 		STOP_TIMING(SoundEntities);
+		HPL_TRACE_STEP("soundentities")
+
+		#undef HPL_TRACE_STEP
 	}
 
 	//-----------------------------------------------------------------------

@@ -20,6 +20,8 @@
 
 #include <cstdlib>
 
+#include "system/FrameTrace.h"
+
 #include "input/Input.h"
 #include "input/Mouse.h"
 
@@ -261,6 +263,8 @@ namespace hpl {
 
 		uint64_t lTraceThresholdMS = 0;
 		const bool bTrace = FrameTraceThreshold(lTraceThresholdMS);
+		mpUpdater->SetTraceUpdates(bTrace);
+		FrameTrace::SetEnabled(bTrace);
 		uint64_t lTraceFrameStart = 0, lTraceUpdateMS = 0, lTraceListMS = 0;
 		uint64_t lTraceRenderMS = 0, lTraceSwapMS = 0;
 
@@ -272,6 +276,7 @@ namespace hpl {
 			{
 				lTraceFrameStart = GetAppTimeMS();
 				lTraceUpdateMS = lTraceListMS = lTraceRenderMS = lTraceSwapMS = 0;
+				FrameTrace::Reset();
 			}
 
 			//Log("-----------------\n");
@@ -350,12 +355,13 @@ namespace hpl {
 				const uint64_t lTotalMS = GetAppTimeMS() - lTraceFrameStart;
 				if(lTotalMS >= lTraceThresholdMS)
 				{
-					Log("SLOW FRAME %llu ms: update %llu, renderlist %llu, render %llu, swap %llu\n",
+					Log("SLOW FRAME %llu ms: update %llu, renderlist %llu, render %llu, swap %llu | %s\n",
 						(unsigned long long)lTotalMS,
 						(unsigned long long)lTraceUpdateMS,
 						(unsigned long long)lTraceListMS,
 						(unsigned long long)lTraceRenderMS,
-						(unsigned long long)lTraceSwapMS);
+						(unsigned long long)lTraceSwapMS,
+						FrameTrace::Report().c_str());
 				}
 			}
 		}

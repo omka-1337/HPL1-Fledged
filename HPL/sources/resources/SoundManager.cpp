@@ -60,7 +60,10 @@ namespace hpl {
 		auto qualifiedName = FileSearcher::ResolveAssetName(name, SupportedExtensions());
 		auto sound = static_cast<iSoundData*>(FindLoadedResource(qualifiedName, fullPath));
 		if (! sound && fullPath.length() > 0) {
-			sound = _soundDevice->CreateSoundData(name);
+			// Name it the way it is looked up. Created under the bare name, it
+			// could never be found again, so every play decoded the whole Ogg
+			// anew - which cost more than the rest of the frame put together.
+			sound = _soundDevice->CreateSoundData(qualifiedName);
 			if (sound->CreateFromFile(fullPath, stream) == false)
 			{
 				delete sound;
