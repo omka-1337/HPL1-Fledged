@@ -80,9 +80,11 @@ namespace hpl {
 		glClear(GL_DEPTH_BUFFER_BIT);
 
 		// Push the recorded depth away from the light so that a surface does
-		// not shadow itself along its own slope.
+		// not shadow itself along its own slope. Kept small: too much and the
+		// shadow separates from the foot of its caster, which reads as the
+		// object hovering above the floor.
 		glEnable(GL_POLYGON_OFFSET_FILL);
-		glPolygonOffset(2.0f, 4.0f);
+		glPolygonOffset(1.0f, 1.5f);
 	}
 
 	//-----------------------------------------------------------------------
@@ -176,7 +178,7 @@ namespace hpl {
 		glDepthFunc(GL_LESS);
 
 		glEnable(GL_POLYGON_OFFSET_FILL);
-		glPolygonOffset(2.0f, 4.0f);
+		glPolygonOffset(1.0f, 1.5f);
 	}
 
 	//-----------------------------------------------------------------------

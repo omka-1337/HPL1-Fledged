@@ -35,6 +35,8 @@
 #include "scene/Light3DSpot.h"
 #include "graphics/ogl2/ShadowMap.h"
 
+#include <cstdlib>
+
 #include <algorithm>
 #include <set>
 #include <vector>
@@ -49,7 +51,17 @@ namespace hpl {
 	// Point lights need six depth passes each, so only the few nearest the
 	// camera get them - which is always the one the player is carrying.
 	static const int kMaxShadowedPointLights = 2;
-	static const float kShadowCubeNear = 0.05f;
+
+	/** HPL_POINT_SHADOWS=0 turns point light shadows off for comparison. */
+	static bool PointShadowsEnabled()
+	{
+		static const bool bEnabled = []() {
+			const char *pEnv = getenv("HPL_POINT_SHADOWS");
+			return pEnv == NULL || pEnv[0] != '0';
+		}();
+		return bEnabled;
+	}
+	static const float kShadowCubeNear = 0.2f;
 
 
 	//////////////////////////////////////////////////////////////////////////
@@ -638,6 +650,8 @@ namespace hpl {
 		const float fNear = kShadowCubeNear;
 
 		// 90 degree frustum, square aspect: the generic form collapses to this.
+		// The face vectors below are the standard GL cube orientations, which
+		// already assume an ordinary right-handed look-at - no handedness flip.
 		const float Z = -(fFar + fNear) / (fFar - fNear);
 		const float C = -(2.0f * fFar * fNear) / (fFar - fNear);
 		const cMatrixf mtxProj(1,0,0,0,
@@ -742,7 +756,7 @@ namespace hpl {
 		// Pick the point lights that get a cube map: the nearest few, which is
 		// how the light in the player's hand always ends up in the set.
 		std::set<iLight3D*> setCubeShadowed;
-		if(mpShadowCube && mpShadowCube->IsValid() && mpDepthProgram
+		if(PointShadowsEnabled() && mpShadowCube && mpShadowCube->IsValid() && mpDepthProgram
 			&& mRenderSettings.mShowShadows != eRendererShowShadows_None)
 		{
 			std::vector<std::pair<float, iLight3D*>> vCandidates;
