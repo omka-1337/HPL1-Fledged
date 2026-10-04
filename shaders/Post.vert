@@ -1,3 +1,5 @@
+// Copyright (C) 2026 - Omka1337, written with the help of Claude Code
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Full-screen triangle; the vertices come from gl_VertexID, no buffer needed.
 #version 410
 

@@ -1,3 +1,5 @@
+// Copyright (C) 2026 - Omka1337, written with the help of Claude Code
+// SPDX-License-Identifier: GPL-3.0-or-later
 // GL header shim.
 //
 // macOS ships <OpenGL/gl3.h>; Linux has no such header, and handhelds have

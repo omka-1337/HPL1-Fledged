@@ -1,3 +1,6 @@
+// Based on HPL1 Rehatched by zenmumbler; changes copyright (C) 2026 -
+// Omka1337, written with the help of Claude Code
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Vertex func for GraphicsDrawer objects
 #version 410
 

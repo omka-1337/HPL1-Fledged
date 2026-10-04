@@ -49,7 +49,7 @@ The build produces a static library. A game adds this directory and links
 `HPL`:
 
 ```cmake
-set(HPL1_ENGINE_DIR "${CMAKE_SOURCE_DIR}/../HPL1-Flegded"
+set(HPL1_ENGINE_DIR "${CMAKE_SOURCE_DIR}/../HPL1-Fledged"
     CACHE PATH "Where the HPL1 engine is checked out")
 add_subdirectory(${HPL1_ENGINE_DIR} engine)
 target_link_libraries(mygame PRIVATE HPL)
@@ -78,10 +78,12 @@ HPL1 engine under the GPL; HPL1 Rehatched is a derivative of it, this is a
 derivative of that, and the licence travels with the code. A permissive licence
 here would simply be void.
 
-`LICENSE` is the GPL v3 text verbatim. Files carrying the 2006–2010 Frictional
-Games header are theirs; files without one are later additions, by zenmumbler or
-in this fork, and are covered by the same licence as part of the work as a
-whole.
+`LICENSE` is the GPL v3 text verbatim. Who wrote what is readable from the file
+headers: the 2006–2010 Frictional Games notice marks the original engine
+sources, an Omka1337 notice marks files written for this fork — with the help of
+Claude Code, which is stated there rather than hidden — and files with neither
+are zenmumbler's HPL1 Rehatched additions, which carried no header. All of it is
+under the same licence as one work.
 
 The vendored dependencies are all under permissive, GPL-compatible terms — see
 `NOTICE` for which is which. OpenAL and SDL2 are linked as system libraries and

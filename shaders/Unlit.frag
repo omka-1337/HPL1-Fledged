@@ -1,3 +1,5 @@
+// Copyright (C) 2026 - Omka1337, written with the help of Claude Code
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Blended surfaces: halos, light shafts, smoke. These emit rather than receive,
 // so the ambient term must not scale them (matches Diffuse_Color_fp.cg).
 #version 410

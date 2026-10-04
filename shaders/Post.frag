@@ -1,3 +1,5 @@
+// Copyright (C) 2026 - Omka1337, written with the help of Claude Code
+// SPDX-License-Identifier: GPL-3.0-or-later
 // Resolves the off-screen scene to the back buffer.
 #version 410
 
