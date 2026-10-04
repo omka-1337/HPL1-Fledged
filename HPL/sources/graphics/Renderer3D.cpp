@@ -868,9 +868,13 @@ namespace hpl {
 
 			iLight3D* pLight = lightIt.Next();
 
-			// cRenderList::Compile() never fills mvObjectsPerLight - the loop
-			// that counted objects per light is commented out - so the old
-			// "skip lights that reach nothing" test rejected every light.
+			// Now that the per-light lists are built again, a light that touches
+			// no geometry is genuinely free to skip.
+			if(mpRenderList->GetObjectsForLight(pLight) == NULL)
+			{
+				lLightCount++;
+				continue;
+			}
 
 			if(mbLog) Log("-----Light %s ------\n", pLight->GetName().c_str());
 
@@ -948,8 +952,45 @@ namespace hpl {
 					mpLightProgram->SetFloat("lightIsSpot", 0.0f);
 				}
 
-				cRenderNode* pNode = mpRenderList->GetRootNode();
-				pNode->Render(&mRenderSettings);
+				// Only the geometry this light reaches, rather than the whole
+				// visible scene once per light.
+				const std::vector<iRenderable*> *pLitObjects =
+					mpRenderList->GetObjectsForLight(pLight);
+
+				if(pLitObjects)
+				{
+					for(iRenderable *pObject : *pLitObjects)
+					{
+						iMaterial *pMaterial = pObject->GetMaterial();
+						iVertexBuffer *pVtxBuffer = pObject->GetVertexBuffer();
+						if(pMaterial == NULL || pVtxBuffer == NULL) continue;
+
+						for(int i=0; i<MAX_TEXTUREUNITS; ++i)
+						{
+							iTexture *pTex = pMaterial->GetTexture(i);
+							if(mRenderSettings.mpTexture[i] != pTex)
+							{
+								_llGfx->SetTexture(i, pTex);
+								mRenderSettings.mpTexture[i] = pTex;
+							}
+						}
+
+						const cMatrixf mtxModel = pObject->GetModelMatrix(apCamera);
+						const cMatrixf mtxMV = cMath::MatrixMul(apCamera->GetViewMatrix(), mtxModel);
+
+						mpLightProgram->SetMatrixf("worldViewProj",
+							cMath::MatrixMul(apCamera->GetProjectionMatrix(), mtxMV));
+						mpLightProgram->SetMatrixf("model", mtxModel);
+						mpLightProgram->SetMatrixf("normalMatrix",
+							cMath::MatrixTranspose(cMath::MatrixInverse(mtxModel)));
+
+						pVtxBuffer->Bind();
+						pVtxBuffer->Draw();
+						pVtxBuffer->UnBind();
+					}
+
+					mRenderSettings.mpVtxBuffer = NULL;
+				}
 			}
 			pLight->EndDraw(&mRenderSettings, _llGfx);
 

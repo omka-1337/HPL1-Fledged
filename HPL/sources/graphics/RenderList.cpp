@@ -17,6 +17,8 @@
  * along with HPL1 Engine.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "graphics/RenderList.h"
+
+#include "scene/Light3D.h"
 #include "graphics/Renderable.h"
 #include "scene/MeshEntity.h"
 #include "graphics/Material.h"
@@ -235,6 +237,8 @@ namespace hpl {
 
 		for (int i=0; i<lLightNum; ++i) mvObjectsPerLight[i] = 0;
 
+		m_mapLightObjects.clear();
+
 		// Iterate the objects to be rendered and build trees with render states.
 		for (auto pObject : m_setObjects)
 		{
@@ -252,6 +256,24 @@ namespace hpl {
 			{
 				//If the object uses z pass add to z tree.
 				AddToTree(pObject);
+
+				// Record which lights actually reach it, so each light pass can
+				// draw just those instead of the entire visible scene.
+				int lLightIdx = 0;
+				for (auto pLight : m_setLights)
+				{
+					if(lLightIdx >= MAX_NUM_OF_LIGHTS) break;
+
+					const bool bInSector = pLight->GetOnlyAffectInSector() == false
+						|| pObject->IsInSector(pLight->GetCurrentSector());
+
+					if(bInSector && pLight->CheckObjectIntersection(pObject))
+					{
+						m_mapLightObjects[pLight].push_back(pObject);
+						++mvObjectsPerLight[lLightIdx];
+					}
+					++lLightIdx;
+				}
 
 				//Light trees that the object will belong to.
 				/*
@@ -273,6 +295,14 @@ namespace hpl {
 				*/
 			}
 		}
+	}
+
+	//-----------------------------------------------------------------------
+
+	const std::vector<iRenderable*>* cRenderList::GetObjectsForLight(iLight3D *apLight) const
+	{
+		auto it = m_mapLightObjects.find(apLight);
+		return (it == m_mapLightObjects.end()) ? NULL : &it->second;
 	}
 
 	//-----------------------------------------------------------------------

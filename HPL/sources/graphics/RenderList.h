@@ -29,6 +29,9 @@
 
 #include <vector>
 
+#include <map>
+#include <vector>
+
 namespace hpl {
 
 	class iRenderable;
@@ -151,6 +154,13 @@ namespace hpl {
 
 		int GetLightObjects(int alLightIdx){ return mvObjectsPerLight[alLightIdx];}
 
+		/**
+		 * The geometry a given light actually reaches. Drawing the whole scene
+		 * once per light is what the original avoided, and it is the first
+		 * thing that bites on a weak CPU.
+		 */
+		const std::vector<iRenderable*>* GetObjectsForLight(iLight3D *apLight) const;
+
 		void SetFrameTime(float afTime){ mfFrameTime = afTime;}
 
 		cRenderNode* GetRootNode();
@@ -173,6 +183,8 @@ namespace hpl {
 
 		tMotionBlurObjectSet m_setMotionBlurObjects;
 		tTransperantObjectSet m_setTransperantObjects;
+
+		std::map<iLight3D*, std::vector<iRenderable*>> m_mapLightObjects;
 
 		cRenderNode mRootNodeDiffuse;
 
