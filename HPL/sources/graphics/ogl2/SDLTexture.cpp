@@ -160,7 +160,10 @@ namespace hpl {
 		glGenTextures(1, mvTextureHandles.data());
 
 		GLenum GLTarget = InitCreation(0);
-		glTexImage2D(GLTarget, 0, GL_RGBA8, mlWidth, mlHeight, 0, GL_RGB, GL_UNSIGNED_BYTE, nullptr);
+		// The format must agree with the internal format: desktop GL tolerates
+		// RGBA8 declared as GL_RGB, GLES rejects it and leaves the texture
+		// unspecified - which showed up as a completely black inventory.
+		glTexImage2D(GLTarget, 0, GL_RGBA8, mlWidth, mlHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 		PostCreation(GLTarget);
 		return true;
 	}
