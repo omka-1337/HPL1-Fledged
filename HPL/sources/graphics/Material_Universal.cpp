@@ -121,8 +121,15 @@ namespace hpl {
 		{
 			const bool bHasIllumination = mvTexture[eMaterialTexture_Illumination] != NULL;
 
-			_program = mpProgramManager->CreateProgram("Universal.vert",
-				bHasIllumination ? "UniversalIllum.frag" : "Universal.frag");
+			// A blended surface is its own light source - halos, light shafts,
+			// smoke. The original drew these with Diffuse_Color_fp.cg, which
+			// does not touch the ambient term; modulating them by it made the
+			// window halos four times too dim to see.
+			const char *pFragment = mbIsTransperant
+				? "Unlit.frag"
+				: (bHasIllumination ? "UniversalIllum.frag" : "Universal.frag");
+
+			_program = mpProgramManager->CreateProgram("Universal.vert", pFragment);
 
 			// Programs are cached by name, so this costs one extra program
 			// overall, and it keeps the glow out of the common shader.

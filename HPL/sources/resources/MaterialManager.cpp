@@ -175,6 +175,7 @@ namespace hpl {
 		}
 
 		bool bUseAlpha = cString::ToBool(pMain->Attribute("UseAlpha"), false);
+		bool bDepthTest = cString::ToBool(pMain->Attribute("DepthTest"), true);
 		tString sPhysicsMatName = cString::ToString(pMain->Attribute("PhysicsMaterial"),"Default");
 
 		iMaterial* pMat = _matHandler->Create(name, sType);
@@ -184,6 +185,7 @@ namespace hpl {
 		}
 
 		pMat->SetHasAlpha(bUseAlpha);
+		pMat->SetDepthTest(bDepthTest);
 		pMat->SetPhysicsMaterial(sPhysicsMatName);
 
 		///////////////////////////

@@ -113,6 +113,13 @@ namespace hpl {
 
 		bool IsTransperant() {return mbIsTransperant;}
 
+		/**
+		 * A few blended materials - window halos, lamp glows - are meant to be
+		 * seen through the geometry in front of them.
+		 */
+		bool GetDepthTest() const { return mbDepthTest; }
+		void SetDepthTest(bool abX) { mbDepthTest = abX; }
+
 		const tString& GetPhysicsMaterial(){ return msPhysicsMaterial;}
 		void SetPhysicsMaterial(const tString& asName){ msPhysicsMaterial = asName;}
 
@@ -122,6 +129,7 @@ namespace hpl {
 		cGpuProgramManager* mpProgramManager;
 
 		bool mbIsTransperant;
+		bool mbDepthTest = true;
 		bool mbHasAlpha;
 
 		tString msPhysicsMaterial;

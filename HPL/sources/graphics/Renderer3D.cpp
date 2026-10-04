@@ -796,6 +796,13 @@ namespace hpl {
 		// own program, and bind it once for every light.
 		mpLightProgram->Bind();
 		mpLightProgram->SetFloat("alphaCutoff", 0.6f);
+
+		static const float sfUseBump = []() {
+			const char *p = getenv("HPL_BUMP");
+			return (p && p[0] == '0') ? 0.0f : 1.0f;
+		}();
+		mpLightProgram->SetFloat("useBump", sfUseBump);
+
 		mRenderSettings.mpProgram = mpLightProgram;
 		mRenderSettings.mpProgramSetup = NULL;
 		mRenderSettings.mpProgramOverride = mpLightProgram;
@@ -984,6 +991,11 @@ namespace hpl {
 
 			ApplyBlendMode(_llGfx, pMaterial->GetBlendMode());
 
+			// Halos and glows are authored to show through whatever stands in
+			// front of them; the flag was being ignored entirely.
+			_llGfx->SetDepthTestActive(pMaterial->GetDepthTest());
+
+
 			for(int i=0; i<MAX_TEXTUREUNITS; ++i)
 				_llGfx->SetTexture(i, pMaterial->GetTexture(i));
 
@@ -1014,6 +1026,7 @@ namespace hpl {
 
 		if(pBoundProgram) pBoundProgram->UnBind();
 
+		_llGfx->SetDepthTestActive(true);
 		_llGfx->SetBlendActive(false);
 		_llGfx->SetDepthWriteActive(true);
 
