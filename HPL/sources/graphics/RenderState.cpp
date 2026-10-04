@@ -160,6 +160,9 @@ namespace hpl {
 
 	void iRenderState::SetBlendMode(cRenderSettings* apSettings)
 	{
+		// A pass may own the blend mode for its whole duration.
+		if(apSettings->mbForceBlendMode) return;
+
 		if(mBlendMode != apSettings->mBlendMode)
 		{
 			if(apSettings->mbLog)Log("Setting blend mode: %d\n", mBlendMode);

@@ -108,6 +108,15 @@ namespace hpl {
 		iGpuProgram* mpProgramOverride;
 
 		/**
+		 * When true the state tree must not touch the blend mode. The light
+		 * pass sums onto the ambient result, but the tree carries each
+		 * material's own mode (Replace for opaque) and would otherwise
+		 * overwrite that result with the light-only value - which is black
+		 * wherever the light does not reach.
+		 */
+		bool mbForceBlendMode;
+
+		/**
 		 * Set by the light pass. Off, SetMatrixMode skips the model and normal
 		 * matrices: shaders that do not declare them would make SetMatrixf warn
 		 * once per object per frame, and the normal matrix costs an inverse.

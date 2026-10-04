@@ -91,6 +91,7 @@ namespace hpl {
 	{
 		mpProgramOverride = NULL;
 		mbNeedsLightingMatrices = false;
+		mbForceBlendMode = false;
 
 		mbFogActive = false;
 		mfFogStart = 5.0f;
@@ -246,6 +247,7 @@ namespace hpl {
 		mpProgram = NULL;
 		mpProgramOverride = NULL;
 		mbNeedsLightingMatrices = false;
+		mbForceBlendMode = false;
 
 		mpSector = NULL;
 
@@ -654,9 +656,21 @@ namespace hpl {
 
 	//-----------------------------------------------------------------------
 
+	/** HPL_POST=0 skips the off-screen stage entirely. */
+	static bool PostProcessEnabled()
+	{
+		static const bool bOn = []() {
+			const char *p = getenv("HPL_POST");
+			return p == NULL || p[0] != '0';
+		}();
+		return bOn;
+	}
+
+	//-----------------------------------------------------------------------
+
 	void cRenderer3D::BeginPostProcess()
 	{
-		if(mpPostProgram == NULL) return;
+		if(mpPostProgram == NULL || PostProcessEnabled() == false) return;
 
 		const cVector2f vSize = _llGfx->GetScreenSize();
 		if(mpPostProcess->Resize((int)vSize.x, (int)vSize.y) == false) return;
@@ -668,7 +682,8 @@ namespace hpl {
 
 	void cRenderer3D::ResolvePostProcess()
 	{
-		if(mpPostProgram == NULL || mpPostProcess->IsValid() == false) return;
+		if(mpPostProgram == NULL || PostProcessEnabled() == false) return;
+		if(mpPostProcess->IsValid() == false) return;
 
 		// HPL_GAMMA and HPL_BLOOM override the config so the two can be tuned
 		// without a rebuild.
@@ -780,6 +795,10 @@ namespace hpl {
 	{
 		if(mDebugFlags & eRendererDebugFlag_DisableLighting) return;
 		if(mpLightProgram == NULL) return;
+		// HPL_NO_LIGHTS=1 leaves only the ambient pass - the quickest way to
+		// tell "this surface gets no light" from "this surface is not drawn".
+		static const bool sbSkipLights = getenv("HPL_NO_LIGHTS") != NULL;
+		if(sbSkipLights) return;
 		if(mbLog) Log("Rendering Lighting:\n");
 
 		mRenderSettings.mChannelMode = eMaterialChannelMode_RGBA;
@@ -807,6 +826,7 @@ namespace hpl {
 		mRenderSettings.mpProgramSetup = NULL;
 		mRenderSettings.mpProgramOverride = mpLightProgram;
 		mRenderSettings.mbNeedsLightingMatrices = true;
+		mRenderSettings.mbForceBlendMode = true;
 
 		//////////////////////////////////////////////
 		// Pick the point lights that get a cube map: the nearest few, which is
@@ -939,6 +959,7 @@ namespace hpl {
 
 		mRenderSettings.mpProgramOverride = NULL;
 		mRenderSettings.mbNeedsLightingMatrices = false;
+		mRenderSettings.mbForceBlendMode = false;
 		mpLightProgram->UnBind();
 		mRenderSettings.mpProgram = NULL;
 
