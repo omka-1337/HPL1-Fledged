@@ -17,6 +17,8 @@
  * along with HPL1 Engine.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "graphics/ogl2/OcclusionQueryOGL.h"
+
+#include "graphics/ogl2/GLSLProgram.h"
 #ifdef __APPLE__
 #include <OpenGL/gl3.h>
 #else
@@ -52,23 +54,35 @@ namespace hpl {
 
 	//-----------------------------------------------------------------------
 
+	/**
+	 * GLES only has the "any samples passed" form, so there the result is a
+	 * yes/no rather than a count. Halo fading, which divides one count by
+	 * another, becomes a hard on/off there.
+	 */
+	static GLenum QueryTarget()
+	{
+		return cGLSLProgram::TargetIsGLES() ? GL_ANY_SAMPLES_PASSED : GL_SAMPLES_PASSED;
+	}
+
 	void cOcclusionQueryOGL::Begin()
 	{
-		glBeginQuery(GL_SAMPLES_PASSED,mlQueryId);
+		glBeginQuery(QueryTarget(), mlQueryId);
 	}
 
 	void cOcclusionQueryOGL::End()
 	{
-		glEndQuery(GL_SAMPLES_PASSED);
+		glEndQuery(QueryTarget());
 	}
 
 	bool cOcclusionQueryOGL::FetchResults()
 	{
-		int lAvailable=0;
-		glGetQueryObjectiv(mlQueryId,GL_QUERY_RESULT_AVAILABLE,(GLint *)&lAvailable);
-		if(lAvailable==0) return false;
+		GLuint lAvailable = 0;
+		glGetQueryObjectuiv(mlQueryId, GL_QUERY_RESULT_AVAILABLE, &lAvailable);
+		if(lAvailable == 0) return false;
 
-		glGetQueryObjectiv(mlQueryId,GL_QUERY_RESULT,(GLint *)&mlLastSampleCount);
+		GLuint lResult = 0;
+		glGetQueryObjectuiv(mlQueryId, GL_QUERY_RESULT, &lResult);
+		mlLastSampleCount = lResult;
 		return true;
 	}
 

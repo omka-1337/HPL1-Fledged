@@ -26,6 +26,8 @@
 #include "graphics/Bitmap.h"
 #include "graphics/Image.h"
 #include "graphics/ogl2/SDLTexture.h"
+
+#include "graphics/ogl2/GLSLProgram.h"
 #include "graphics/impl/LowLevelGraphicsSDL.h"
 
 #include "math/Math.h"
@@ -456,8 +458,13 @@ namespace hpl {
 		//Clear error flags
 		while(glGetError()!=GL_NO_ERROR);
 
-		if (mTarget == eTextureTarget_1D)
+		// GLES has no 1D textures, so a 1D image becomes a 2D one of height 1.
+		// Nothing samples these any more - the light falloff curve is computed
+		// in the shader - but the engine still creates one per light.
+		if (mTarget == eTextureTarget_1D && cGLSLProgram::TargetIsGLES() == false)
 			glTexImage1D(GLTarget, 0, internalFormat, mlWidth, 0, format, GL_UNSIGNED_BYTE, pPixelSrc);
+		else if (mTarget == eTextureTarget_1D)
+			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, mlWidth, 1, 0, format, GL_UNSIGNED_BYTE, pPixelSrc);
 		else
 			glTexImage2D(GLTarget, 0, internalFormat, mlWidth, mlHeight, 0, format, GL_UNSIGNED_BYTE, pPixelSrc);
 

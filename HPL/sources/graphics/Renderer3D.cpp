@@ -457,7 +457,13 @@ namespace hpl {
 			cOcclusionQueryObject *pObject = it.Next();
 			//LogUpdate("Query: %d!\n",pObject->mpQuery);
 
-			while(pObject->mpQuery->FetchResults()==false);
+			// Bounded: an unbounded spin here hung the whole game when a driver
+			// never produced a result. Keeping the previous count for a frame
+			// is far better than never drawing another one.
+			for(int lTry = 0; lTry < 10000; ++lTry)
+			{
+				if(pObject->mpQuery->FetchResults()) break;
+			}
 
 			if(mbLog) Log(" Query: %d SampleCount: %d\n",	pObject->mpQuery,
 															pObject->mpQuery->GetSampleCount());

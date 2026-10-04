@@ -43,6 +43,45 @@ namespace hpl {
 
 	//-----------------------------------------------------------------------
 
+	static bool gbTargetIsGLES = false;
+
+	void cGLSLProgram::SetTargetIsGLES(bool abX) { gbTargetIsGLES = abX; }
+	bool cGLSLProgram::TargetIsGLES() { return gbTargetIsGLES; }
+
+	//-----------------------------------------------------------------------
+
+	/**
+	 * Replaces the shader's `#version` line with one the current context
+	 * accepts. ES additionally needs explicit precision, including for the
+	 * shadow samplers, which have no default.
+	 */
+	static tString RetargetShaderSource(const char *apSource, int alLength)
+	{
+		tString sSource(apSource, alLength);
+
+		const size_t lVersionAt = sSource.find("#version");
+		if(lVersionAt != tString::npos)
+		{
+			const size_t lLineEnd = sSource.find('\n', lVersionAt);
+			if(lLineEnd != tString::npos)
+				sSource.erase(lVersionAt, lLineEnd - lVersionAt + 1);
+		}
+
+		const tString sHeader = gbTargetIsGLES
+			? "#version 310 es\n"
+			  "precision highp float;\n"
+			  "precision highp int;\n"
+			  "precision highp sampler2D;\n"
+			  "precision highp samplerCube;\n"
+			  "precision highp sampler2DShadow;\n"
+			  "precision highp samplerCubeShadow;\n"
+			: "#version 410\n";
+
+		return sHeader + sSource;
+	}
+
+	//-----------------------------------------------------------------------
+
 	GLuint LoadShaderFromFile(const tString& shaderPath, GLint type) {
 		int sourceSize;
 		auto source = LoadEntireFile(shaderPath, sourceSize);
@@ -50,8 +89,13 @@ namespace hpl {
 			Log("Error loading shader: '%s'!\n", shaderPath.c_str());
 			return 0;
 		}
+
+		const tString sRetargeted = RetargetShaderSource(source, sourceSize);
+		const char *pFinal = sRetargeted.c_str();
+		const int lFinalLen = (int)sRetargeted.size();
+
 		auto shader = glCreateShader(type);
-		glShaderSource(shader, 1, &source, &sourceSize);
+		glShaderSource(shader, 1, &pFinal, &lFinalLen);
 		int compileOK;
 		glCompileShader(shader);
 		delete[] source;
@@ -62,7 +106,7 @@ namespace hpl {
 			char *infoLog = new char[logLength];
 			glGetShaderInfoLog(shader, logLength, &logLength, infoLog);
 
-			Log("Error compiling shader: %s\n", infoLog);
+			Log("Error compiling shader '%s': %s\n", shaderPath.c_str(), infoLog);
 			delete[] infoLog;
 
 			glDeleteShader(shader);

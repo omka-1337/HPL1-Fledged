@@ -68,7 +68,7 @@ namespace hpl {
 
 		while(SDL_PollEvent(&sdlEvent)!=0)
 		{
-			ImGui_ImplSDL2_ProcessEvent(&sdlEvent);
+			if(cLowLevelGraphicsSDL::ImGuiAvailable()) ImGui_ImplSDL2_ProcessEvent(&sdlEvent);
 
 			// SDL_MOUSE* events are 0x04nn, SDL_KEY* events are 0x03nn
 			// don't forward mouse or key events to the game when the debug console

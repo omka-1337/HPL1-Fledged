@@ -26,6 +26,7 @@
 #include <GL/gl3.h>
 #endif
 
+#include <cstdlib>
 #include <assert.h>
 #include <stdlib.h>
 
@@ -45,6 +46,8 @@
 #include "system/Log.h"
 
 namespace hpl {
+
+	static bool gbImGuiActive = true;
 
 	//////////////////////////////////////////////////////////////////////////
 	// GLOBAL FUNCTIONS
@@ -127,10 +130,15 @@ namespace hpl {
 	//-------------------------------------------------
 
 	// used by SDLTexture.cpp
+	bool cLowLevelGraphicsSDL::ImGuiAvailable() { return gbImGuiActive; }
+
+	//-----------------------------------------------------------------------
+
 	GLenum TextureTargetToGL(eTextureTarget aTarget)
 	{
 		switch (aTarget) {
-			case eTextureTarget_1D:		return GL_TEXTURE_1D;
+			// GLES has no 1D target; such textures are stored as 2D, height 1.
+			case eTextureTarget_1D:		return cGLSLProgram::TargetIsGLES() ? GL_TEXTURE_2D : GL_TEXTURE_1D;
 			case eTextureTarget_2D:		return GL_TEXTURE_2D;
 			case eTextureTarget_CubeMap:return GL_TEXTURE_CUBE_MAP;
 			case eTextureTarget_3D:		return GL_TEXTURE_3D;
@@ -161,8 +169,10 @@ namespace hpl {
 	{
 
 		if (mpImGuiContext) {
-			ImGui_ImplSDL2_Shutdown();
-			ImGui_ImplOpenGL3_Shutdown();
+			if(gbImGuiActive) {
+				ImGui_ImplSDL2_Shutdown();
+				ImGui_ImplOpenGL3_Shutdown();
+			}
 			ImGui::DestroyContext(mpImGuiContext);
 		}
 
@@ -207,10 +217,27 @@ namespace hpl {
 		mvScreenSize.x = alWidth;
 		mvScreenSize.y = alHeight;
 
-		// Request GL Core Profile context
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+		// GLES on handhelds, desktop core elsewhere. HPL_GLES=1 forces the ES
+		// path on a desktop too, which is how it gets tested without hardware.
+#if defined(__arm__) || defined(__aarch64__)
+		const bool bUseGLES = getenv("HPL_GLES") == NULL || getenv("HPL_GLES")[0] != '0';
+#else
+		const bool bUseGLES = getenv("HPL_GLES") != NULL && getenv("HPL_GLES")[0] != '0';
+#endif
+
+		if(bUseGLES)
+		{
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+		}
+		else
+		{
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+			SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+		}
+		cGLSLProgram::SetTargetIsGLES(bUseGLES);
 
 		SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
@@ -264,8 +291,15 @@ namespace hpl {
 
 		// ImGui context
 		mpImGuiContext = ImGui::CreateContext();
-		ImGui_ImplOpenGL3_Init();
-		ImGui_ImplSDL2_InitForOpenGL(mpWindow, mpGLContext);
+		// ImGui's GL3 backend resolves desktop entry points that an ES context
+		// does not have, and crashes building its shaders. The debug menu is
+		// not something a handheld needs, so it simply stays off there.
+		gbImGuiActive = (bUseGLES == false);
+		if(gbImGuiActive)
+		{
+			ImGui_ImplOpenGL3_Init();
+			ImGui_ImplSDL2_InitForOpenGL(mpWindow, mpGLContext);
+		}
 
 		// Hide cursor by default
 		ShowCursor(false);
@@ -369,6 +403,8 @@ namespace hpl {
 	void cLowLevelGraphicsSDL::StartFrame() {
 		ClearScreen();
 
+		if(gbImGuiActive == false) return;
+
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplSDL2_NewFrame();
 		ImGui::NewFrame();
@@ -380,9 +416,14 @@ namespace hpl {
 	}
 	
 	void cLowLevelGraphicsSDL::EndFrame() {
-		// render the debug views last on top of everything else
-		ImGui::Render();
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		// render the debug views last on top of everything else.
+		// Render() without a matching NewFrame() walks uninitialised state, so
+		// both ends stay together when the debug UI is off.
+		if(gbImGuiActive)
+		{
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+		}
 
 		SwapBuffers();
 	}
@@ -414,7 +455,7 @@ namespace hpl {
 		glClearColor(aCol.r, aCol.g, aCol.b, aCol.a);
 	}
 	void cLowLevelGraphicsSDL::SetClearDepth(float afDepth){
-		glClearDepth(afDepth);
+		glClearDepthf(afDepth);
 	}
 	void cLowLevelGraphicsSDL::SetClearStencil(int alVal){
 		glClearStencil(alVal);

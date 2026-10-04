@@ -24,7 +24,7 @@ namespace hpl {
 		glGenTextures(1, &mDepthTexture);
 		glBindTexture(GL_TEXTURE_2D, mDepthTexture);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, mlSize, mlSize, 0,
-					 GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+					 GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
 
 		// A depth-compare sampler gets 2x2 percentage-closer filtering for free
 		// from the hardware, which takes the worst of the stair-stepping off.
@@ -43,7 +43,9 @@ namespace hpl {
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, mDepthTexture, 0);
 
 		// Depth only - there is no colour attachment to draw to or read from.
-		glDrawBuffer(GL_NONE);
+		// glDrawBuffers (plural) is the form GLES has.
+		const GLenum noBuffers = GL_NONE;
+		glDrawBuffers(1, &noBuffers);
 		glReadBuffer(GL_NONE);
 
 		const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -131,7 +133,7 @@ namespace hpl {
 		for(int i=0; i<6; ++i)
 		{
 			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT24,
-						 mlSize, mlSize, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
+						 mlSize, mlSize, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
 		}
 
 		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
@@ -146,7 +148,8 @@ namespace hpl {
 		glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
 							   GL_TEXTURE_CUBE_MAP_POSITIVE_X, mDepthCube, 0);
-		glDrawBuffer(GL_NONE);
+		const GLenum noBuffersCube = GL_NONE;
+		glDrawBuffers(1, &noBuffersCube);
 		glReadBuffer(GL_NONE);
 
 		const GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);

@@ -50,6 +50,9 @@ namespace hpl {
 		bool Init(int alWidth, int alHeight, bool abFullscreen, const tString& asWindowCaption) override;
 
 		void ShowCursor(bool abX) override;
+
+		/** The debug menu is desktop-only: its ImGui backend needs desktop GL. */
+		static bool ImGuiAvailable();
 		void SetInputGrab(bool abX);
 
 		void SetVsyncActive(bool abX) override;

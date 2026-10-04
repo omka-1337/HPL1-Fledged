@@ -14,6 +14,13 @@ namespace hpl {
 	class cGLSLProgram : public iGpuProgram
 	{
 	public:
+		/**
+		 * Shaders are written once against desktop GLSL; the loader swaps the
+		 * version line (and adds the precision block) when the context is ES.
+		 */
+		static void SetTargetIsGLES(bool abX);
+		static bool TargetIsGLES();
+
 		cGLSLProgram(tString asName);
 		~cGLSLProgram();
 
