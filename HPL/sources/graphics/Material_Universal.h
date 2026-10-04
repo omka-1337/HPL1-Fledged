@@ -30,6 +30,8 @@ namespace hpl {
 
 		iTexture* GetTexture(int alUnit) override;
 
+		eMaterialSpecularMode GetSpecularMode() override;
+
 		/**
 		 * Alpha below this is discarded in the fragment shader. Blended
 		 * materials disable the test (0) so their soft edges survive.
@@ -46,6 +48,7 @@ namespace hpl {
 		iGpuProgram* _program;
 		eMaterialBlendMode _blendMode;
 		float _alphaCutoff;
+		eMaterialSpecularMode _specularMode;
 
 		static iTexture *_flatNormalMap;
 	};

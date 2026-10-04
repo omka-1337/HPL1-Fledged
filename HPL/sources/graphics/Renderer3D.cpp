@@ -158,6 +158,7 @@ namespace hpl {
 			mpLightProgram->SetTextureBindingIndex("shadowMap", 2);
 			mpLightProgram->SetTextureBindingIndex("shadowCube", 3);
 			mpLightProgram->SetTextureBindingIndex("normalMap", 4);
+			mpLightProgram->SetTextureBindingIndex("specularMap", 5);
 			mpLightProgram->UnBind();
 		}
 
@@ -828,6 +829,15 @@ namespace hpl {
 		}();
 		mpLightProgram->SetFloat("useBump", sfUseBump);
 
+		// HPL_SPECULAR=0 drops the highlights, both to compare against the
+		// flat look and because it is one of the cheaper things to give up on
+		// a handheld.
+		static const float sfSpecularScale = []() {
+			const char *p = getenv("HPL_SPECULAR");
+			return (p && p[0] == '0') ? 0.0f : 1.0f;
+		}();
+		mpLightProgram->SetFloat("specularScale", sfSpecularScale);
+
 		mRenderSettings.mpProgram = mpLightProgram;
 		mRenderSettings.mpProgramSetup = NULL;
 		mRenderSettings.mpProgramOverride = mpLightProgram;
@@ -944,6 +954,15 @@ namespace hpl {
 				mpLightProgram->SetVec3f("lightColor", col.r, col.g, col.b);
 				mpLightProgram->SetFloat("lightRadius", fRadius > 0.0f ? fRadius : 1.0f);
 
+				// The alpha of the light colour is its specular strength, not
+				// an opacity: the Collada loader writes the light node's Y
+				// scale into it (MeshLoaderCollada.cpp), which is how the
+				// original let a mapper tune the highlight lamp by lamp.
+				mpLightProgram->SetFloat("lightSpecular", col.a);
+
+				const cVector3f vEye = apCamera->GetPosition();
+				mpLightProgram->SetVec3f("eyePos", vEye.x, vEye.y, vEye.z);
+
 				if(pLight->GetLightType() == eLight3DType_Spot)
 				{
 					cLight3DSpot *pSpot = static_cast<cLight3DSpot*>(pLight);
@@ -983,6 +1002,12 @@ namespace hpl {
 
 						const cMatrixf mtxModel = pObject->GetModelMatrix(apCamera);
 						const cMatrixf mtxMV = cMath::MatrixMul(apCamera->GetViewMatrix(), mtxModel);
+
+						// Per-object uniforms work here because the light pass
+						// draws its objects directly rather than through the
+						// state tree, which binds a program once per subtree.
+						mpLightProgram->SetFloat("specMode",
+							(float)pMaterial->GetSpecularMode());
 
 						mpLightProgram->SetMatrixf("worldViewProj",
 							cMath::MatrixMul(apCamera->GetProjectionMatrix(), mtxMV));

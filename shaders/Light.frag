@@ -6,6 +6,7 @@
 
 in vec3 oWorldPos;
 in vec3 oLightVecTS;
+in vec3 oEyeVecTS;
 in vec4 oColor;
 in vec2 oUV;
 
@@ -13,8 +14,22 @@ layout(location = 0) out vec4 fragColor;
 
 uniform sampler2D diffuseMap;
 uniform sampler2D normalMap;
+uniform sampler2D specularMap;
 uniform float useBump;
 uniform float alphaCutoff;
+
+// Which specular model this surface asks for, matching eMaterialSpecularMode:
+// 0 none, 1 strength from the normal map's alpha, 2 strength and tint from
+// specularMap. A float because iGpuProgram has no integer setter.
+uniform float specMode;
+
+// The light's own specular strength. The original kept it in the alpha of the
+// light colour, which the Collada loader fills from the light node's Y scale,
+// so a mapper could dial the highlight per lamp.
+uniform float lightSpecular;
+
+// HPL_SPECULAR=0 sets this to 0 and takes the highlights out entirely.
+uniform float specularScale;
 
 uniform vec3 lightPos;
 uniform vec3 lightColor;
@@ -132,5 +147,29 @@ void main() {
 	// filtered, so cutting on it would alias along every shadow edge.
 
 	vec3 lit = diffuse.rgb * oColor.rgb * lightColor * (ndotl * atten * cone * shadow);
+
+	// Specular, as BumpSpec_Light_fp.cg and BumpColorSpec_Light_fp.cg had it:
+	// a Blinn half-angle vector against the normal map, raised to 16, scaled
+	// by the light's own specular strength. The highlight is masked either by
+	// the normal map's alpha or by a specular map, and it is added rather than
+	// multiplied by the diffuse texture, so it can brighten past the surface
+	// colour the way wet stone and metal do.
+	if (specMode > 0.5 && lightSpecular > 0.0 && ndotl > 0.0) {
+		float eyeLen = length(oEyeVecTS);
+		vec3 Vts = (eyeLen > 0.0001) ? oEyeVecTS / eyeLen : vec3(0.0, 0.0, 1.0);
+		vec3 H = normalize(Lts + Vts);
+
+		float spec = pow(max(dot(H, bumpVec), 0.0), 16.0) * lightSpecular * specularScale;
+
+		// Mask it the way the material asks. Gloss reads the alpha the 97 TGA
+		// normal maps carry; the 7 JPEG ones have none, so they read 1 and go
+		// full strength, which is what the original did with them too.
+		vec3 specColor = (specMode > 1.5)
+			? texture(specularMap, oUV).rgb
+			: vec3(clamp(texture(normalMap, oUV).a, 0.0, 1.0));
+
+		lit += lightColor * specColor * (spec * atten * cone * shadow);
+	}
+
 	fragColor = vec4(lit, 1.0);
 }

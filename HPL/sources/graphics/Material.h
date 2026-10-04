@@ -65,6 +65,21 @@ namespace hpl {
 		eMaterialChannelMode_Z
 	};
 
+	/**
+	 * Where a surface's specular strength comes from. The content asks for
+	 * both kinds: BumpSpecular masks the highlight with the normal map's own
+	 * alpha channel, BumpColorSpecular tints it with a separate map, which is
+	 * what BumpSpec_Light_fp.cg and BumpColorSpec_Light_fp.cg did.
+	 * The values are passed to the light shader as they are, so do not
+	 * renumber them without changing Light.frag.
+	 */
+	enum eMaterialSpecularMode
+	{
+		eMaterialSpecularMode_None = 0,
+		eMaterialSpecularMode_Gloss = 1,	// strength from the normal map alpha
+		eMaterialSpecularMode_Color = 2		// strength and tint from a map
+	};
+
 	//---------------------------------------------------
 
 	class cRenderSettings;
@@ -102,6 +117,8 @@ namespace hpl {
 		virtual eMaterialChannelMode GetChannelMode(){return eMaterialChannelMode_RGBA;}
 
 		virtual iTexture* GetTexture(int alUnit){return NULL;}
+
+		virtual eMaterialSpecularMode GetSpecularMode(){return eMaterialSpecularMode_None;}
 
 		bool HasAlpha(){ return mbHasAlpha;}
 		void SetHasAlpha(bool abX){ mbHasAlpha= abX; }

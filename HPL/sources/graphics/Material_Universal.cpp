@@ -58,6 +58,7 @@ namespace hpl {
 	{
 		eMaterialBlendMode blendMode;
 		bool transparent;
+		eMaterialSpecularMode specular;
 	};
 
 	static MaterialTypeTraits TraitsForType(const tString& asTypeName)
@@ -65,18 +66,31 @@ namespace hpl {
 		const tString sType = cString::ToLowerCase(asTypeName);
 
 		if(sType == "additive")
-			return { eMaterialBlendMode_Add, true };
+			return { eMaterialBlendMode_Add, true, eMaterialSpecularMode_None };
 		if(sType == "alpha")
-			return { eMaterialBlendMode_Alpha, true };
+			return { eMaterialBlendMode_Alpha, true, eMaterialSpecularMode_None };
 		if(sType == "modulative")
-			return { eMaterialBlendMode_Mul, true };
+			return { eMaterialBlendMode_Mul, true, eMaterialSpecularMode_None };
 		if(sType == "modulativex2")
-			return { eMaterialBlendMode_MulX2, true };
+			return { eMaterialBlendMode_MulX2, true, eMaterialSpecularMode_None };
 
-		// Everything else is an opaque surface: diffuse, the bump family,
-		// flat, 2D, and the handful of water/cube/envmap materials that still
-		// need their own shaders.
-		return { eMaterialBlendMode_Replace, false };
+		// The two specular families, 247 materials between them in the retail
+		// data, which is most of what makes wet stone and metal read as wet
+		// stone and metal rather than as flat paint.
+		if(sType == "bumpspecular")
+			return { eMaterialBlendMode_Replace, false, eMaterialSpecularMode_Gloss };
+		if(sType == "bumpcolorspecular")
+			return { eMaterialBlendMode_Replace, false, eMaterialSpecularMode_Color };
+		// DiffuseSpec_Light_fp.cg masked its highlight with nothing at all and
+		// dotted against a flat (0,0,1) normal. Gloss plus the flat stand-in
+		// normal map, whose alpha is 1, comes out the same.
+		if(sType == "diffusespecular")
+			return { eMaterialBlendMode_Replace, false, eMaterialSpecularMode_Gloss };
+
+		// Everything else is an opaque surface: diffuse, plain bump, flat, 2D,
+		// and the handful of water/cube/envmap materials that still need their
+		// own shaders.
+		return { eMaterialBlendMode_Replace, false, eMaterialSpecularMode_None };
 	}
 
 	//-----------------------------------------------------------------------
@@ -90,6 +104,7 @@ namespace hpl {
 
 		mbIsTransperant = traits.transparent;
 		_blendMode = traits.blendMode;
+		_specularMode = traits.specular;
 
 		// A blended surface fades out instead of ending on a hard edge, so the
 		// cutoff that alpha-tested geometry relies on would eat its gradient.
@@ -187,10 +202,32 @@ namespace hpl {
 			iTexture *pNormal = mvTexture[eMaterialTexture_Normal];
 			return pNormal ? pNormal : _flatNormalMap;
 		}
+		if (alUnit == 5)
+		{
+			// Unit 5 is the light pass's specular map, and only the Color mode
+			// reads it. Gloss mode takes its strength from the normal map's
+			// alpha instead, so there is nothing to bind here.
+			return (_specularMode == eMaterialSpecularMode_Color)
+				? mvTexture[eMaterialTexture_Specular] : NULL;
+		}
 		return NULL;
 	}
 
 	//-----------------------------------------------------------------------
+
+	eMaterialSpecularMode Material_Universal::GetSpecularMode()
+	{
+		// Every BumpColorSpecular material in the retail data declares a
+		// specular map, so this only catches a missing or unloadable file.
+		// Dropping the highlight is the quiet failure; falling through to the
+		// normal map's alpha would paint the surface white instead.
+		if(_specularMode == eMaterialSpecularMode_Color
+			&& mvTexture[eMaterialTexture_Specular] == NULL)
+		{
+			return eMaterialSpecularMode_None;
+		}
+		return _specularMode;
+	}
 
 
 	//-----------------------------------------------------------------------
