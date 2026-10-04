@@ -35,6 +35,8 @@
 #include "scene/Light3DSpot.h"
 #include "graphics/Bitmap.h"
 #include "graphics/Material_Universal.h"
+#include "graphics/ogl2/PostProcess.h"
+#include "graphics/ogl2/SkyBox.h"
 #include "graphics/ogl2/ShadowMap.h"
 #include "system/FrameTrace.h"
 
@@ -173,6 +175,18 @@ namespace hpl {
 				Error("Could not create the flat normal map - bump lighting will be wrong\n");
 		}
 
+		mfGamma = 1.0f;
+		mfBloomAmount = 0.0f;
+		mpPostProcess = new cPostProcess();
+		mpPostProgram = _programManager->CreateProgram("Post.vert", "Post.frag");
+		if(mpPostProgram == NULL)
+			Error("Could not load the post-process program; gamma and bloom are off\n");
+
+		mpSkyBoxDrawer = new cSkyBoxDrawer();
+		mpSkyProgram = _programManager->CreateProgram("Sky.vert", "Sky.frag");
+		if(mpSkyProgram == NULL)
+			Error("Could not load the sky program; windows will show black\n");
+
 		mpShadowMap = new cShadowMap(1024);
 		mpShadowCube = new cShadowMapCube(512);
 		if(mpDepthProgram == NULL || mpShadowMap->IsValid() == false)
@@ -201,6 +215,10 @@ namespace hpl {
 		delete mpShadowMap;
 		delete mpShadowCube;
 		delete mpFlatNormalMap;
+		delete mpPostProcess;
+		delete mpSkyBoxDrawer;
+		if(mpSkyProgram) _programManager->Destroy(mpSkyProgram);
+		if(mpPostProgram) _programManager->Destroy(mpPostProgram);
 
 		if(mpSkyBox) delete mpSkyBox;
 		if(mpSkyBoxTexture && mbAutoDestroySkybox)
@@ -463,60 +481,22 @@ namespace hpl {
 
 	void cRenderer3D::RenderSkyBox(cCamera *apCamera)
 	{
-	/*
-		if(mbSkyBoxActive==false) return;
-
+		if(mbSkyBoxActive == false || mpSkyProgram == NULL) return;
 		if(mbLog) Log("Rendering Skybox:\n");
-		_llGfx->SetDepthTestFunc(eDepthTestFunc_LessOrEqual);
 
-		if(mRenderSettings.mpProgram)
-		{
-			mRenderSettings.mpProgram->UnBind();
-			mRenderSettings.mpProgram = NULL;
-			if(mbLog) Log(" Setting program: NULL\n");
-		}
-		if(mRenderSettings.mpVtxBuffer)
-		{
-			mRenderSettings.mpVtxBuffer->UnBind();
-			mRenderSettings.mpVtxBuffer = NULL;
-			if(mbLog) Log(" Setting Vertex Buffer: NULL\n");
-		}
+		// Only the rotation matters - the sky is infinitely far away.
+		cMatrixf mtxViewRot = apCamera->GetViewMatrix();
+		mtxViewRot.SetTranslation(cVector3f(0,0,0));
 
-		for(int i=1; i<MAX_TEXTUREUNITS; ++i)
-		{
-			if(mRenderSettings.mpTexture[i])
-			{
-				_llGfx->SetTexture(i,NULL);
-				mRenderSettings.mpTexture[i] = NULL;
-				if(mbLog) Log(" Setting Texture %d : NULL\n",i);
-			}
-		}
+		const cMatrixf mtxInvViewProj = cMath::MatrixInverse(
+			cMath::MatrixMul(apCamera->GetProjectionMatrix(), mtxViewRot));
 
-		cMatrixf mtxSky = cMatrixf::Identity;
+		mpSkyBoxDrawer->Draw(mpSkyProgram, mtxInvViewProj, mSkyBoxColor, mpSkyBoxTexture);
 
-		//Calculate the size of the sky box need to just touch the far clip plane.
-		float fFarClip = apCamera->GetFarClipPlane();
-		float fSide = sqrt((fFarClip*fFarClip) / 3) *0.95f;
-		mtxSky.m[0][0] = fSide;
-		mtxSky.m[1][1] = fSide;
-		mtxSky.m[2][2] = fSide;
-
-		mtxSky = cMath::MatrixMul(mtxSky,apCamera->GetViewMatrix());
-
-		mtxSky.SetTranslation(0);
-
-		_llGfx->SetMatrix(eMatrix_ModelView,mtxSky);
-
-		mpLowLevelGraphics->SetTexture(0,mpSkyBoxTexture);
-		mRenderSettings.mpTexture[0] = mpSkyBoxTexture;
-
-		mpLowLevelGraphics->SetBlendActive(false);
-		mRenderSettings.mBlendMode = eMaterialBlendMode_Replace;
-
-		mpSkyBox->Bind();
-		mpSkyBox->Draw();
-		mpSkyBox->UnBind();
-	*/
+		// Drawn outside the state tree, so its cache no longer reflects reality.
+		mRenderSettings.mpProgram = NULL;
+		mRenderSettings.mpVtxBuffer = NULL;
+		mRenderSettings.mpTexture[0] = NULL;
 	}
 
 	//-----------------------------------------------------------------------
@@ -670,6 +650,44 @@ namespace hpl {
 		// The tree caches what it last bound; the pass above went around it.
 		mRenderSettings.mpVtxBuffer = NULL;
 		mRenderSettings.mpProgram = NULL;
+	}
+
+	//-----------------------------------------------------------------------
+
+	void cRenderer3D::BeginPostProcess()
+	{
+		if(mpPostProgram == NULL) return;
+
+		const cVector2f vSize = _llGfx->GetScreenSize();
+		if(mpPostProcess->Resize((int)vSize.x, (int)vSize.y) == false) return;
+
+		mpPostProcess->Begin();
+	}
+
+	//-----------------------------------------------------------------------
+
+	void cRenderer3D::ResolvePostProcess()
+	{
+		if(mpPostProgram == NULL || mpPostProcess->IsValid() == false) return;
+
+		// HPL_GAMMA and HPL_BLOOM override the config so the two can be tuned
+		// without a rebuild.
+		static const float sfGammaOverride = []() {
+			const char *p = getenv("HPL_GAMMA");
+			return p ? (float)atof(p) : -1.0f;
+		}();
+		static const float sfBloomOverride = []() {
+			const char *p = getenv("HPL_BLOOM");
+			return p ? (float)atof(p) : -1.0f;
+		}();
+
+		mpPostProcess->Resolve(mpPostProgram,
+			sfGammaOverride > 0.0f ? sfGammaOverride : mfGamma,
+			sfBloomOverride >= 0.0f ? sfBloomOverride : mfBloomAmount);
+
+		// The resolve drew with its own program and no vertex buffer.
+		mRenderSettings.mpProgram = NULL;
+		mRenderSettings.mpVtxBuffer = NULL;
 	}
 
 	//-----------------------------------------------------------------------

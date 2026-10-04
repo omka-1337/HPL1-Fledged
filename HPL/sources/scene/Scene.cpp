@@ -216,6 +216,10 @@ namespace hpl {
 	{
 		if(mbDrawScene && mpActiveCamera)
 		{
+			// Everything 3D goes into the off-screen buffer; the 2D GUI below
+			// is drawn straight to the back buffer so it stays untouched.
+			_renderer->BeginPostProcess();
+
 			if(mpCurrentWorld3D)
 			{
 				START_TIMING(RenderWorld)
@@ -228,7 +232,7 @@ namespace hpl {
 			STOP_TIMING(PostSceneDraw)
 
 			START_TIMING(PostEffects)
-			// GetRendererPostEffects()->Render();
+			_renderer->ResolvePostProcess();
 			STOP_TIMING(PostEffects)
 		}
 		else

@@ -123,6 +123,8 @@ namespace hpl {
 
 	//---------------------------------------------
 
+	class cPostProcess;
+	class cSkyBoxDrawer;
 	class cShadowMap;
 	class cShadowMapCube;
 
@@ -185,6 +187,17 @@ namespace hpl {
 		void RenderLight(cCamera *apCamera);
 		void RenderShadowMap(cLight3DSpot *apLight);
 		void RenderShadowCube(iLight3D *apLight);
+
+	public:
+		/** Wraps the 3D scene so gamma and bloom can be applied to it. */
+		void BeginPostProcess();
+		void ResolvePostProcess();
+
+		void SetGammaCorrection(float afX) { mfGamma = afX; }
+		float GetGammaCorrection() const { return mfGamma; }
+		void SetBloomAmount(float afX) { mfBloomAmount = afX; }
+
+	private:
 		void RenderDiffuse(cCamera *apCamera);
 		void RenderTrans(cCamera *apCamera);
 
@@ -211,6 +224,18 @@ namespace hpl {
 		cShadowMapCube* mpShadowCube;
 
 		iTexture* mpFlatNormalMap;
+
+		cPostProcess* mpPostProcess;
+
+		iGpuProgram* mpPostProgram;
+
+		cSkyBoxDrawer* mpSkyBoxDrawer;
+
+		iGpuProgram* mpSkyProgram;
+
+		float mfGamma;
+
+		float mfBloomAmount;
 
 		cRenderSettings mRenderSettings;
 

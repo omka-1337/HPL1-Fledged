@@ -238,6 +238,49 @@ namespace hpl {
 
 	//-----------------------------------------------------------------------
 
+	/**
+	 * HPL_SCREENSHOT=<frame>[:<path>] writes one frame to a PPM and exits.
+	 * Lets the rendering be checked without a person having to look at it.
+	 */
+	static bool ScreenshotRequest(long &alFrame, tString &asPath)
+	{
+		const char *pEnv = getenv("HPL_SCREENSHOT");
+		if(pEnv == NULL) return false;
+
+		const tString sValue = pEnv;
+		const size_t lColon = sValue.find(':');
+
+		alFrame = strtol(sValue.substr(0, lColon).c_str(), NULL, 10);
+		asPath = (lColon == tString::npos) ? "frame.ppm" : sValue.substr(lColon + 1);
+		return alFrame > 0;
+	}
+
+	//-----------------------------------------------------------------------
+
+	static void WritePPM(const Bitmap &aBmp, const tString &asPath)
+	{
+		FILE *pFile = fopen(asPath.c_str(), "wb");
+		if(pFile == NULL) { Error("Could not open '%s' for the screenshot\n", asPath.c_str()); return; }
+
+		const int lW = aBmp.GetWidth();
+		const int lH = aBmp.GetHeight();
+		fprintf(pFile, "P6\n%d %d\n255\n", lW, lH);
+
+		const unsigned char *pSrc = aBmp.GetRawData<unsigned char>();
+		for(int y = lH - 1; y >= 0; --y)			// GL reads bottom-up
+		{
+			for(int x = 0; x < lW; ++x)
+			{
+				const unsigned char *p = pSrc + ((size_t)y * lW + x) * 4;
+				fwrite(p, 1, 3, pFile);
+			}
+		}
+		fclose(pFile);
+		Log("Screenshot written to '%s'\n", asPath.c_str());
+	}
+
+	//-----------------------------------------------------------------------
+
 	void cGame::Run()
 	{
 		//Log line that ends user init.
@@ -260,6 +303,11 @@ namespace hpl {
 
 		mfFrameTime = 0;
 		float tempFrameTime = GetAppTimeFloat();
+
+		long lShotFrame = 0;
+		tString sShotPath;
+		const bool bWantShot = ScreenshotRequest(lShotFrame, sShotPath);
+		long lFrameNum = 0;
 
 		uint64_t lTraceThresholdMS = 0;
 		const bool bTrace = FrameTraceThreshold(lTraceThresholdMS);
@@ -336,6 +384,14 @@ namespace hpl {
 
 				//Update fps counter.
 				mpFPSCounter->AddFrame();
+
+				// Grabbed before the swap: afterwards the back buffer no longer
+				// holds the frame that was just drawn.
+				if(bWantShot && ++lFrameNum >= lShotFrame)
+				{
+					WritePPM(_llGfx->GetScreenPixels(), sShotPath);
+					mbGameIsDone = true;
+				}
 
 				//Update the screen.
 				const uint64_t lTraceSwapStart = bTrace ? GetAppTimeMS() : 0;
