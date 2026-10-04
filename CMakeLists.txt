@@ -1,11 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
-project(PenumbraOverture CXX C)
+project(HPL1 CXX C)
+
+# The HPL1 engine as a library. A game links HPL and ships the shaders from
+# HPL1_SHADER_DIR next to its data - the engine looks for them under
+# rehatched/core/programs at runtime (see Resources.cpp).
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 11)
 
-set(DEPS ${CMAKE_SOURCE_DIR}/dependencies)
+set(DEPS ${CMAKE_CURRENT_SOURCE_DIR}/dependencies)
 
 find_package(SDL2 REQUIRED)
 find_package(OpenAL REQUIRED)
@@ -96,12 +100,12 @@ target_include_directories(imgui PUBLIC ${HPL_SDL2_INCLUDE_DIRS})
 target_compile_options(imgui PRIVATE -w)
 
 # ---- HPL engine --------------------------------------------------------------
-file(GLOB_RECURSE hpl_src ${CMAKE_SOURCE_DIR}/HPL/sources/*.cpp)
+file(GLOB_RECURSE hpl_src ${CMAKE_CURRENT_SOURCE_DIR}/HPL/sources/*.cpp)
 list(FILTER hpl_src EXCLUDE REGEX "LowLevelSystemMac")
 add_library(HPL STATIC ${hpl_src})
 target_include_directories(HPL PUBLIC
-    ${CMAKE_SOURCE_DIR}/HPL/sources
-    ${CMAKE_SOURCE_DIR}/compat          # provides GL/gl3.h on non-Apple
+    ${CMAKE_CURRENT_SOURCE_DIR}/HPL/sources
+    ${CMAKE_CURRENT_SOURCE_DIR}/compat          # provides GL/gl3.h on non-Apple
     ${DEPS}/include
     ${DEPS}/sources)
 target_link_libraries(HPL PUBLIC
@@ -109,7 +113,5 @@ target_link_libraries(HPL PUBLIC
     ${HPL_SDL2_LIBRARIES} ${HPL_GL_LIBRARIES} ${OPENAL_LIBRARY})
 target_include_directories(HPL PUBLIC ${OPENAL_INCLUDE_DIR} ${HPL_SDL2_INCLUDE_DIRS})
 
-# ---- game --------------------------------------------------------------------
-file(GLOB_RECURSE game_src ${CMAKE_SOURCE_DIR}/PenumbraOverture/src/*.cpp)
-add_executable(PenumbraOverture ${game_src})
-target_link_libraries(PenumbraOverture PRIVATE HPL)
+# Where a game can find the shaders it has to ship.
+set(HPL1_SHADER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/shaders CACHE PATH "HPL1 shader sources")
