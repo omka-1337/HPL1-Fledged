@@ -19,7 +19,7 @@ namespace hpl {
 	//-----------------------------------------------------------------------
 
 	cShadowMap::cShadowMap(int alSize)
-		: mFBO(0), mDepthTexture(0), mlSize(alSize)
+		: mFBO(0), mDepthTexture(0), mlSize(alSize), mlPreviousFBO(0)
 	{
 		glGenTextures(1, &mDepthTexture);
 		glBindTexture(GL_TEXTURE_2D, mDepthTexture);
@@ -70,6 +70,10 @@ namespace hpl {
 
 	void cShadowMap::BeginRender()
 	{
+		// The scene may be going into the post-process target, so the previous
+		// binding has to be restored rather than assumed to be the back buffer.
+		glGetIntegerv(GL_FRAMEBUFFER_BINDING, &mlPreviousFBO);
+
 		glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
 		glViewport(0, 0, mlSize, mlSize);
 
@@ -94,7 +98,7 @@ namespace hpl {
 		glDisable(GL_POLYGON_OFFSET_FILL);
 		glPolygonOffset(0.0f, 0.0f);
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)mlPreviousFBO);
 		glViewport(0, 0, alScreenWidth, alScreenHeight);
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	}
@@ -119,7 +123,7 @@ namespace hpl {
 	//-----------------------------------------------------------------------
 
 	cShadowMapCube::cShadowMapCube(int alSize)
-		: mFBO(0), mDepthCube(0), mlSize(alSize)
+		: mFBO(0), mDepthCube(0), mlSize(alSize), mlPreviousFBO(0)
 	{
 		glGenTextures(1, &mDepthCube);
 		glBindTexture(GL_TEXTURE_CUBE_MAP, mDepthCube);
@@ -169,6 +173,8 @@ namespace hpl {
 
 	void cShadowMapCube::BeginRender()
 	{
+		glGetIntegerv(GL_FRAMEBUFFER_BINDING, &mlPreviousFBO);
+
 		glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
 		glViewport(0, 0, mlSize, mlSize);
 
@@ -197,7 +203,7 @@ namespace hpl {
 		glDisable(GL_POLYGON_OFFSET_FILL);
 		glPolygonOffset(0.0f, 0.0f);
 
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_FRAMEBUFFER, (GLuint)mlPreviousFBO);
 		glViewport(0, 0, alScreenWidth, alScreenHeight);
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	}

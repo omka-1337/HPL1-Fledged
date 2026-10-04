@@ -29,6 +29,9 @@ namespace hpl {
 		unsigned int mFBO;
 		unsigned int mDepthTexture;
 		int mlSize;
+
+		/** Whatever was bound before this pass - not necessarily the back buffer. */
+		int mlPreviousFBO;
 	};
 
 	//---------------------------------------------------------------
@@ -61,6 +64,8 @@ namespace hpl {
 		unsigned int mFBO;
 		unsigned int mDepthCube;
 		int mlSize;
+
+		int mlPreviousFBO;
 	};
 
 }
