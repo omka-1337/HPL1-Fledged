@@ -210,6 +210,8 @@ namespace hpl {
 
 		cShadowMapCube* mpShadowCube;
 
+		iTexture* mpFlatNormalMap;
+
 		cRenderSettings mRenderSettings;
 
 		cBoundingVolume mFogBV;

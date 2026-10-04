@@ -37,6 +37,8 @@ namespace hpl {
 
 	static cAmbProgramSetup gAmbProgramSetup;
 
+	iTexture *Material_Universal::_flatNormalMap = NULL;
+
 
 	//-----------------------------------------------------------------------
 
@@ -170,6 +172,14 @@ namespace hpl {
 			return mvTexture[eMaterialTexture_Diffuse];
 		if (alUnit == 1)
 			return mvTexture[eMaterialTexture_Illumination];
+		if (alUnit == 4)
+		{
+			// Unit 4 is the light pass's normal map. Materials without one get
+			// a flat stand-in so the shader needs no per-material switch - the
+			// state tree binds one program for the whole pass.
+			iTexture *pNormal = mvTexture[eMaterialTexture_Normal];
+			return pNormal ? pNormal : _flatNormalMap;
+		}
 		return NULL;
 	}
 

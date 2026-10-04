@@ -36,10 +36,18 @@ namespace hpl {
 		 */
 		float GetAlphaCutoff() const { return _alphaCutoff; }
 
+		/**
+		 * Stands in for materials with no normal map so the light shader can
+		 * sample unconditionally. Set once by the renderer.
+		 */
+		static void SetFlatNormalMap(iTexture *apTexture) { _flatNormalMap = apTexture; }
+
 	protected:
 		iGpuProgram* _program;
 		eMaterialBlendMode _blendMode;
 		float _alphaCutoff;
+
+		static iTexture *_flatNormalMap;
 	};
 
 	class MaterialType_Universal : public iMaterialType

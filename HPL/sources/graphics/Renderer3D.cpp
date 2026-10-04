@@ -33,7 +33,10 @@
 #include "scene/RenderableContainer.h"
 #include "scene/Light3D.h"
 #include "scene/Light3DSpot.h"
+#include "graphics/Bitmap.h"
+#include "graphics/Material_Universal.h"
 #include "graphics/ogl2/ShadowMap.h"
+#include "system/FrameTrace.h"
 
 #include <cstdlib>
 
@@ -50,7 +53,19 @@ namespace hpl {
 
 	// Point lights need six depth passes each, so only the few nearest the
 	// camera get them - which is always the one the player is carrying.
-	static const int kMaxShadowedPointLights = 2;
+	static const int kDefaultShadowedPointLights = 2;
+
+	/** HPL_SHADOW_BUDGET overrides how many point lights get a cube map. */
+	static int MaxShadowedPointLights()
+	{
+		static const int lBudget = []() {
+			const char *pEnv = getenv("HPL_SHADOW_BUDGET");
+			if(pEnv == NULL) return kDefaultShadowedPointLights;
+			const long lValue = strtol(pEnv, NULL, 10);
+			return (lValue >= 0) ? (int)lValue : kDefaultShadowedPointLights;
+		}();
+		return lBudget;
+	}
 
 	/** HPL_POINT_SHADOWS=0 turns point light shadows off for comparison. */
 	static bool PointShadowsEnabled()
@@ -139,10 +154,25 @@ namespace hpl {
 			mpLightProgram->Bind();
 			mpLightProgram->SetTextureBindingIndex("shadowMap", 2);
 			mpLightProgram->SetTextureBindingIndex("shadowCube", 3);
+			mpLightProgram->SetTextureBindingIndex("normalMap", 4);
 			mpLightProgram->UnBind();
 		}
 
 		mpDepthProgram = _programManager->CreateProgram("PreZ.vert", "Depth.frag");
+		// A single flat-normal texel, handed to every material that has no
+		// normal map of its own (see Material_Universal::GetTexture).
+		{
+			const uint32_t lFlat = 0xFFFF8080u;	// RGBA 128,128,255,255
+			Bitmap flatBmp;
+			flatBmp.CreateFromRGBAPixels((void*)&lFlat, 1, 1);
+
+			mpFlatNormalMap = _llGfx->CreateTexture("FlatNormal", eTextureTarget_2D);
+			if(mpFlatNormalMap && mpFlatNormalMap->CreateFromBitmap(flatBmp))
+				Material_Universal::SetFlatNormalMap(mpFlatNormalMap);
+			else
+				Error("Could not create the flat normal map - bump lighting will be wrong\n");
+		}
+
 		mpShadowMap = new cShadowMap(1024);
 		mpShadowCube = new cShadowMapCube(512);
 		if(mpDepthProgram == NULL || mpShadowMap->IsValid() == false)
@@ -170,6 +200,7 @@ namespace hpl {
 		if(mpDepthProgram) _programManager->Destroy(mpDepthProgram);
 		delete mpShadowMap;
 		delete mpShadowCube;
+		delete mpFlatNormalMap;
 
 		if(mpSkyBox) delete mpSkyBox;
 		if(mpSkyBoxTexture && mbAutoDestroySkybox)
@@ -773,10 +804,13 @@ namespace hpl {
 					pCandidate });
 			}
 
+			if(FrameTrace::Enabled())
+				FrameTrace::Add("pointlight_candidates", (uint64_t)vCandidates.size());
+
 			std::sort(vCandidates.begin(), vCandidates.end(),
 				[](const auto &a, const auto &b) { return a.first < b.first; });
 
-			const int lTake = std::min((int)vCandidates.size(), kMaxShadowedPointLights);
+			const int lTake = std::min((int)vCandidates.size(), MaxShadowedPointLights());
 			for(int i=0; i<lTake; ++i) setCubeShadowed.insert(vCandidates[i].second);
 		}
 
@@ -876,6 +910,7 @@ namespace hpl {
 
 			lLightCount++;
 		}
+
 
 		mRenderSettings.mpProgramOverride = NULL;
 		mRenderSettings.mbNeedsLightingMatrices = false;
