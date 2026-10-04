@@ -68,7 +68,7 @@ namespace hpl {
 		}
 
 		const tString sHeader = gbTargetIsGLES
-			? "#version 310 es\n"
+			? "#version 300 es\n"
 			  "precision highp float;\n"
 			  "precision highp int;\n"
 			  "precision highp sampler2D;\n"
