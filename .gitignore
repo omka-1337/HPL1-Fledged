@@ -20,3 +20,4 @@ rehatched/**/*.snt
 
 # local test dir: symlinks to retail data + built binary
 /run/
+/build-arm64/

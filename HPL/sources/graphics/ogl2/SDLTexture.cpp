@@ -464,10 +464,17 @@ namespace hpl {
 		// GLES has no 1D textures, so a 1D image becomes a 2D one of height 1.
 		// Nothing samples these any more - the light falloff curve is computed
 		// in the shader - but the engine still creates one per light.
+#if defined(__arm__) || defined(__aarch64__)
+		// glTexImage1D does not exist in GLES, not even as a symbol to guard
+		// at runtime, so the choice has to be made at compile time.
+		if (mTarget == eTextureTarget_1D)
+			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, mlWidth, 1, 0, format, GL_UNSIGNED_BYTE, pPixelSrc);
+#else
 		if (mTarget == eTextureTarget_1D && cGLSLProgram::TargetIsGLES() == false)
 			glTexImage1D(GLTarget, 0, internalFormat, mlWidth, 0, format, GL_UNSIGNED_BYTE, pPixelSrc);
 		else if (mTarget == eTextureTarget_1D)
 			glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, mlWidth, 1, 0, format, GL_UNSIGNED_BYTE, pPixelSrc);
+#endif
 		else
 			glTexImage2D(GLTarget, 0, internalFormat, mlWidth, mlHeight, 0, format, GL_UNSIGNED_BYTE, pPixelSrc);
 

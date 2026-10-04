@@ -8,8 +8,31 @@ set(CMAKE_C_STANDARD 11)
 set(DEPS ${CMAKE_SOURCE_DIR}/dependencies)
 
 find_package(SDL2 REQUIRED)
-find_package(OpenGL REQUIRED)
 find_package(OpenAL REQUIRED)
+
+# SDL2 only started exporting an imported target fairly late; the build
+# container ships 2.0.10, which just sets the old variables.
+if(TARGET SDL2::SDL2)
+	set(HPL_SDL2_LIBRARIES SDL2::SDL2)
+	set(HPL_SDL2_INCLUDE_DIRS "")
+else()
+	set(HPL_SDL2_LIBRARIES ${SDL2_LIBRARIES})
+	set(HPL_SDL2_INCLUDE_DIRS ${SDL2_INCLUDE_DIRS})
+	message(STATUS "SDL2: using variables (${SDL2_LIBRARIES})")
+endif()
+
+# Handhelds have GLES and no desktop GL at all, so the two are not
+# interchangeable here: pick by target architecture.
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm")
+	find_library(GLES_LIBRARY NAMES GLESv2 REQUIRED)
+	find_library(EGL_LIBRARY NAMES EGL REQUIRED)
+	set(HPL_GL_LIBRARIES ${GLES_LIBRARY} ${EGL_LIBRARY})
+	message(STATUS "Graphics: OpenGL ES (${GLES_LIBRARY})")
+else()
+	find_package(OpenGL REQUIRED)
+	set(HPL_GL_LIBRARIES OpenGL::OpenGL)
+	message(STATUS "Graphics: desktop OpenGL")
+endif()
 
 # ---- Newton 2.36 -------------------------------------------------------------
 # SIMD is x86-only in this version; _SCALAR_ARITHMETIC_ONLY selects the
@@ -40,6 +63,10 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
 endif()
 add_library(angelscript STATIC ${angelscript_src})
 target_include_directories(angelscript PUBLIC ${DEPS}/sources/AngelScript/include)
+
+# AngelScript's threading uses pthreads, which older glibc keeps separate.
+find_package(Threads REQUIRED)
+target_link_libraries(angelscript PUBLIC Threads::Threads)
 target_compile_options(angelscript PRIVATE -w)
 
 # ---- vendored single-file libs ------------------------------------------------
@@ -63,7 +90,9 @@ add_library(imgui STATIC
     ${DEPS}/sources/imgui/backends/imgui_impl_sdl2.cpp
     ${DEPS}/sources/imgui/backends/imgui_impl_opengl3.cpp)
 target_include_directories(imgui PUBLIC ${DEPS}/sources ${DEPS}/sources/imgui)
-target_link_libraries(imgui PUBLIC SDL2::SDL2 OpenGL::OpenGL)
+# ImGui's GL loader calls dlsym, which on older glibc lives in libdl.
+target_link_libraries(imgui PUBLIC ${HPL_SDL2_LIBRARIES} ${HPL_GL_LIBRARIES} ${CMAKE_DL_LIBS})
+target_include_directories(imgui PUBLIC ${HPL_SDL2_INCLUDE_DIRS})
 target_compile_options(imgui PRIVATE -w)
 
 # ---- HPL engine --------------------------------------------------------------
@@ -77,8 +106,8 @@ target_include_directories(HPL PUBLIC
     ${DEPS}/sources)
 target_link_libraries(HPL PUBLIC
     newton angelscript vendor imgui
-    SDL2::SDL2 OpenGL::OpenGL ${OPENAL_LIBRARY})
-target_include_directories(HPL PUBLIC ${OPENAL_INCLUDE_DIR})
+    ${HPL_SDL2_LIBRARIES} ${HPL_GL_LIBRARIES} ${OPENAL_LIBRARY})
+target_include_directories(HPL PUBLIC ${OPENAL_INCLUDE_DIR} ${HPL_SDL2_INCLUDE_DIRS})
 
 # ---- game --------------------------------------------------------------------
 file(GLOB_RECURSE game_src ${CMAKE_SOURCE_DIR}/PenumbraOverture/src/*.cpp)

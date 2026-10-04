@@ -200,6 +200,17 @@ dgCpuClass dgApi dgGetCpuType ()
 #else
 /*	#define cpuid(func,ax,bx,cx,dx)	__asm__ __volatile__ ("cpuid": "=a" (ax), "=b" (bx), "=c" (cx), "=d" (dx) : "a" (func)); */
 
+#if !defined(__i386__) && !defined(__x86_64__)
+
+// Nothing to ask on ARM: there is no cpuid, and the library is built with
+// _SCALAR_ARITHMETIC_ONLY anyway, so the answer would be "no SIMD" regardless.
+dgCpuClass dgApi dgGetCpuType()
+{
+  return dgNoSimdPresent;
+}
+
+#else
+
 void cpuid(dgUnsigned32 op, dgUnsigned32 reg[4])
 {
   asm volatile(
@@ -248,6 +259,8 @@ dgCpuClass dgApi dgGetCpuType()
 
   return dgNoSimdPresent;
 }
+
+#endif	// x86
 #endif
 
 static inline dgInt32 cmp_vertex(const dgFloat64* const v1,
