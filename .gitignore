@@ -11,3 +11,6 @@ Thumbs.db
 .idea
 DerivedData
 xcuserdata
+
+# a local test directory with built binaries belongs in releases, not here
+/run/
