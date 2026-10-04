@@ -14,8 +14,11 @@ replacement for it. Thank you.
 What was left unfinished there was the renderer: `Renderer3D` was about half the
 size of the original's, the twenty-one material classes were folded into a
 single `Material_Universal`, and lighting, shadows, normal mapping and the sky
-had no implementation behind them. This fork finishes that, adds OpenGL ES, and
-runs on ARM handhelds.
+had no implementation behind them. This fork finishes that and adds OpenGL ES,
+so the engine runs on ARM Linux generally — single-board computers, handhelds,
+anything with GLES 3.0 — and not on one device family. Tested on x86_64 and
+aarch64 Linux; the macOS path HPL1 Rehatched had is still in the tree but is not
+exercised here, and its `arm64` would currently take the GLES branch wrongly.
 
 ## Status
 
@@ -40,8 +43,8 @@ binary blob in the tree.
 
 GLES is selected by target architecture, not by a flag: an `aarch64` or `arm`
 `CMAKE_SYSTEM_PROCESSOR` links `GLESv2` and `EGL`, anything else links desktop
-GL. Handhelds have no desktop GL to fall back to, which is why this is not a
-runtime choice.
+GL. Most ARM systems have no desktop GL to fall back to, which is why this is
+not a runtime choice. If yours does, override `HPL_GL_LIBRARIES`.
 
 ## Using it in a game
 
@@ -68,8 +71,9 @@ Shaders are written once, for desktop GL. `GLSLProgram` rewrites the `#version`
 line and prepends a precision block when the context is ES, so there is no
 second copy to keep in sync.
 
-The Penumbra: Overture PortMaster port is the game this was built for, and a
-worked example of all of the above.
+The Penumbra: Overture PortMaster port is the first game built on this, and a
+worked example of all of the above — but nothing here is tied to PortMaster or
+to any particular handheld.
 
 ## License
 
