@@ -1,23 +1,13 @@
 build
-DerivedData
+build-*
+compile_commands.json
+.cache
+
+# editors
 *~
 .DS_Store
 Thumbs.db
+.vscode
+.idea
+DerivedData
 xcuserdata
-
-node_modules
-
-# don't commit local overrides due to asset copyright
-rehatched/**/*.jpg
-rehatched/**/*.png
-rehatched/**/*.bmp
-rehatched/**/*.tga
-rehatched/**/*.dds
-rehatched/**/*.mat
-rehatched/**/*.ent
-rehatched/**/*.ogg
-rehatched/**/*.snt
-
-# local test dir: symlinks to retail data + built binary
-/run/
-/build-arm64/

@@ -1,28 +1,32 @@
-HPL1 Engine
-===========
+HPL1 Fledged
+============
 
-This product includes the following 3rd party products which are covered under their respective licenses.
+The engine itself is GPL-3.0-or-later; see LICENSE. Sources carrying the
+2006-2010 Frictional Games header come from the HPL1 engine release, the rest
+are later additions in HPL1 Rehatched (zenmumbler) and in this fork.
 
-AngelScript
------------
-AngelScript is covered under the zlib license
+It bundles the following third-party sources, each under its own permissive and
+GPL-compatible licence, built from source under dependencies/sources:
 
-https://www.angelcode.com/
+Newton Dynamics 2.36 - zlib licence
+  http://newtondynamics.com/              dependencies/sources/Newton/LICENSE.md
 
-Newton Dynamics
----------------
-Newton Dynamic is covered under the zlib license
+AngelScript - zlib licence
+  https://www.angelcode.com/              dependencies/sources/AngelScript/LICENSE.md
 
-http://newtondynamics.com/
+Dear ImGui - MIT licence
+  https://github.com/ocornut/imgui        dependencies/sources/imgui/LICENSE.txt
 
-tinyXML
--------
-tinyXML is covered under the zlib/libpng license
+cgltf - MIT licence
+  https://github.com/jkuhlmann/cgltf      dependencies/sources/cgltf/LICENSE
 
-http://www.grinninglizard.com/tinyxml/
+tinyXML - zlib/libpng licence
+  http://www.grinninglizard.com/tinyxml/
 
-SDL2
-----
-SDL 2.0 and SDL2_image are covered under the zlib license
+stb_image, stb_vorbis - public domain (or MIT, at your option)
+  https://github.com/nothings/stb
 
-https://libsdl.org/
+SDL2 and OpenAL are linked as system libraries and are not redistributed here.
+
+No game data is included. Penumbra: Overture's assets remain the property of
+Frictional Games.
