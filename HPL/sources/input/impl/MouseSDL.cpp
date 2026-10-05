@@ -197,24 +197,32 @@ namespace hpl {
 			// from this one. A single empty frame means nothing: the pad sends
 			// movement on its own schedule and the game runs at twenty-odd
 			// frames a second, so empty frames arrive constantly even while the
-			// stick is held. Resetting on one of those would pin the gain to its
-			// starting value and the ramp would never be felt.
+			// stick is held. Reacting to one of those would make the gain jump
+			// about and the pointer move in steps.
 			if(lX != 0 || lY != 0) mlLastMoveMS = lNow;
 
 			const bool bIdle = (mlLastMoveMS == 0)
 				|| (lNow - mlLastMoveMS) > 150;
 
-			// A real pause puts the gain back to the starting speed. That is
-			// what keeps a small deliberate nudge precise: acceleration has to
-			// be earned by holding on.
-			if(bIdle)
+			// The gain walks towards where it should be rather than being set
+			// there. Snapping it back on every pause was the whole cause of the
+			// stutter: the speed changed between one frame and the next, and at
+			// twenty-odd frames a second that reads as the pointer jerking.
+			// Climbing and falling at the same measured rate keeps the motion
+			// continuous while still making acceleration something you earn by
+			// holding on.
+			const float fTarget = bIdle ? mfAccelBase : mfAccelMax;
+			const float fStep = mfAccelRate * fDelta;
+
+			if(mfAccelGain < fTarget)
 			{
-				mfAccelGain = mfAccelBase;
+				mfAccelGain += fStep;
+				if(mfAccelGain > fTarget) mfAccelGain = fTarget;
 			}
-			else
+			else if(mfAccelGain > fTarget)
 			{
-				mfAccelGain += mfAccelRate * fDelta;
-				if(mfAccelGain > mfAccelMax) mfAccelGain = mfAccelMax;
+				mfAccelGain -= fStep;
+				if(mfAccelGain < fTarget) mfAccelGain = fTarget;
 			}
 
 			mvMouseRelPos = mvMouseRelPos * mfAccelGain;
