@@ -321,7 +321,23 @@ namespace hpl {
 
 	void cLowLevelGraphicsSDL::SetInputGrab(bool abX) {
 //		SDL_SetWindowGrab(mpWindow, abX ? SDL_TRUE : SDL_FALSE);
-		SDL_SetRelativeMouseMode(abX ? SDL_TRUE : SDL_FALSE);
+		// Relative mode is what makes looking around work: without it the
+		// pointer is an absolute position that stops at the edge of the screen,
+		// and turning stops with it. It is not guaranteed to be available, so
+		// say so loudly rather than leaving a player to wonder why the view
+		// will not turn past a wall.
+		const int lResult = SDL_SetRelativeMouseMode(abX ? SDL_TRUE : SDL_FALSE);
+		if(lResult != 0)
+		{
+			Error("Could not %s relative mouse mode: %s - looking around will "
+				"stop at the screen edge\n", abX ? "enter" : "leave", SDL_GetError());
+		}
+		else
+		{
+			Log(" Relative mouse mode %s (SDL reports %s)\n",
+				abX ? "on" : "off",
+				SDL_GetRelativeMouseMode() == SDL_TRUE ? "on" : "off");
+		}
 	}
 
 	//-----------------------------------------------------------------------
