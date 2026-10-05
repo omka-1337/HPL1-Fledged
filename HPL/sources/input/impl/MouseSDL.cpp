@@ -19,8 +19,11 @@
 #include "input/impl/MouseSDL.h"
 
 #include <SDL2/SDL.h>
+#include <cstdlib>
+#include <cstring>
 
 #include "graphics/LowLevelGraphics.h"
+#include "system/Log.h"
 #include "input/impl/LowLevelInputSDL.h"
 
 namespace hpl {
@@ -44,6 +47,24 @@ namespace hpl {
 		mpLowLevelGraphics = apLowLevelGraphics;
 
 		mvMouseRelPos = cVector2f(0,0);
+
+		// HPL_MOUSE_ACCEL=<max>[:<rate>] - how far the gain may climb, and how
+		// fast it gets there in gain per second. 3:4 reaches triple speed after
+		// about half a second of held movement.
+		mfAccelMax = 1.0f;
+		mfAccelRate = 4.0f;
+		mfAccelGain = 1.0f;
+		mlLastMotionMS = 0;
+		if(const char *pEnv = getenv("HPL_MOUSE_ACCEL"))
+		{
+			mfAccelMax = (float)atof(pEnv);
+			const char *pColon = strchr(pEnv, ':');
+			if(pColon) mfAccelRate = (float)atof(pColon + 1);
+			if(mfAccelMax < 1.0f) mfAccelMax = 1.0f;
+			if(mfAccelRate <= 0.0f) mfAccelRate = 4.0f;
+			Log(" Mouse acceleration: up to %.2fx at %.2f per second\n",
+				mfAccelMax, mfAccelRate);
+		}
 		mvMouseAbsPos = cVector2f(0,0);
 
 		mbWheelUpMoved = false;
@@ -130,6 +151,29 @@ namespace hpl {
 
 		mvMouseRelPos = cVector2f((float)lX,(float)lY);
 		mvMouseRelPos = (mvMouseRelPos/vScreenSize)*vVirtualSize;
+
+		if(mfAccelMax > 1.0f)
+		{
+			const unsigned int lNow = SDL_GetTicks();
+			const float fDelta = (mlLastMotionMS == 0)
+				? 0.0f : (float)(lNow - mlLastMotionMS) / 1000.0f;
+			mlLastMotionMS = lNow;
+
+			// Standing still, or a gap long enough to count as a new intention,
+			// puts the gain back to one. That is what keeps a small deliberate
+			// nudge precise: acceleration has to be earned by holding on.
+			if((lX == 0 && lY == 0) || fDelta > 0.2f)
+			{
+				mfAccelGain = 1.0f;
+			}
+			else
+			{
+				mfAccelGain += mfAccelRate * fDelta;
+				if(mfAccelGain > mfAccelMax) mfAccelGain = mfAccelMax;
+			}
+
+			mvMouseRelPos = mvMouseRelPos * mfAccelGain;
+		}
 	}
 
 	//-----------------------------------------------------------------------
