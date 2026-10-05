@@ -226,6 +226,23 @@ namespace hpl {
 	 * every frame slower than that logs where its time went. Hitches are hard to
 	 * attribute by eye, and this costs two clock reads per frame when disabled.
 	 */
+	/**
+	 * HPL_FPS_LOG=<seconds> writes the running frame rate to the log at that
+	 * interval, which is the only way to read it back off a device that has no
+	 * place to show an overlay.
+	 */
+	static bool FPSLogInterval(float &afSeconds)
+	{
+		const char *pEnv = getenv("HPL_FPS_LOG");
+		if(pEnv == NULL) return false;
+
+		const float fValue = (float)atof(pEnv);
+		afSeconds = (fValue > 0.0f) ? fValue : 5.0f;
+		return true;
+	}
+
+	//-----------------------------------------------------------------------
+
 	static bool FrameTraceThreshold(uint64_t &aThresholdMS)
 	{
 		const char *pEnv = getenv("HPL_FRAME_TRACE");
@@ -316,6 +333,10 @@ namespace hpl {
 		uint64_t lTraceFrameStart = 0, lTraceUpdateMS = 0, lTraceListMS = 0;
 		uint64_t lTraceRenderMS = 0, lTraceSwapMS = 0;
 
+		float fFPSLogEvery = 0.0f;
+		const bool bLogFPS = FPSLogInterval(fFPSLogEvery);
+		float fLastFPSLog = GetAppTimeFloat();
+
 		bool mbIsUpdated = true;
 
 		while(!mbGameIsDone)
@@ -384,6 +405,16 @@ namespace hpl {
 
 				//Update fps counter.
 				mpFPSCounter->AddFrame();
+
+				// HPL_FPS_LOG=<seconds> prints the running average to the log.
+				// The counter has always been there; without a way to read it
+				// off a handheld, tuning the renderer on one is guesswork.
+				if(bLogFPS && GetAppTimeFloat() - fLastFPSLog >= fFPSLogEvery)
+				{
+					fLastFPSLog = GetAppTimeFloat();
+					Log("FPS %.1f (%.2f ms)\n", mpFPSCounter->mfFPS,
+						mpFPSCounter->mfFPS > 0.0f ? 1000.0f / mpFPSCounter->mfFPS : 0.0f);
+				}
 
 				// Grabbed before the swap: afterwards the back buffer no longer
 				// holds the frame that was just drawn.
