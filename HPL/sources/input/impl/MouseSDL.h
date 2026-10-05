@@ -63,14 +63,17 @@ namespace hpl {
 
 	private:
 		cVector2f mvMouseAbsPos;
+		bool OwnsCursor() const;
+
 		cVector2f mvMouseRelPos;
 
 		// Pointer acceleration, off unless HPL_MOUSE_ACCEL asks for it. A thumb
 		// stick has to serve both aiming at a keyhole and turning round, and a
 		// single sensitivity cannot do both; this leaves a short nudge alone and
 		// speeds up a movement that is held.
-		float mfAccelMax, mfAccelRate, mfAccelGain;
-		unsigned int mlLastMotionMS;
+		float mfAccelMax, mfAccelRate, mfAccelBase, mfAccelGain;
+		unsigned int mlLastMotionMS, mlLastMoveMS;
+		bool mbCursorPlaced;
 
 		std::vector<bool> mvMButtonArray;
 

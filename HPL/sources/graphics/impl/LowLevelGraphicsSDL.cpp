@@ -326,16 +326,24 @@ namespace hpl {
 		// and turning stops with it. It is not guaranteed to be available, so
 		// say so loudly rather than leaving a player to wonder why the view
 		// will not turn past a wall.
-		const int lResult = SDL_SetRelativeMouseMode(abX ? SDL_TRUE : SDL_FALSE);
+		// When the engine drives its own cursor (see cMouseSDL and
+		// HPL_MOUSE_ACCEL) relative mode has to stay on even in the menus.
+		// Letting it go would hand the system pointer back to the compositor,
+		// and the moment that pointer reached a screen edge the deltas would
+		// stop arriving and the cursor would freeze against the side.
+		static const bool sbOwnCursor = getenv("HPL_MOUSE_ACCEL") != NULL;
+		const bool bWanted = abX || sbOwnCursor;
+
+		const int lResult = SDL_SetRelativeMouseMode(bWanted ? SDL_TRUE : SDL_FALSE);
 		if(lResult != 0)
 		{
 			Error("Could not %s relative mouse mode: %s - looking around will "
-				"stop at the screen edge\n", abX ? "enter" : "leave", SDL_GetError());
+				"stop at the screen edge\n", bWanted ? "enter" : "leave", SDL_GetError());
 		}
 		else
 		{
 			Log(" Relative mouse mode %s (SDL reports %s)\n",
-				abX ? "on" : "off",
+				bWanted ? "on" : "off",
 				SDL_GetRelativeMouseMode() == SDL_TRUE ? "on" : "off");
 		}
 	}

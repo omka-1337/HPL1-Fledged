@@ -53,17 +53,28 @@ namespace hpl {
 		// about half a second of held movement.
 		mfAccelMax = 1.0f;
 		mfAccelRate = 4.0f;
+		mfAccelBase = 1.0f;
 		mfAccelGain = 1.0f;
 		mlLastMotionMS = 0;
+		mbCursorPlaced = false;
+		mlLastMoveMS = 0;
 		if(const char *pEnv = getenv("HPL_MOUSE_ACCEL"))
 		{
 			mfAccelMax = (float)atof(pEnv);
 			const char *pColon = strchr(pEnv, ':');
-			if(pColon) mfAccelRate = (float)atof(pColon + 1);
-			if(mfAccelMax < 1.0f) mfAccelMax = 1.0f;
+			if(pColon)
+			{
+				mfAccelRate = (float)atof(pColon + 1);
+				const char *pSecond = strchr(pColon + 1, ':');
+				if(pSecond) mfAccelBase = (float)atof(pSecond + 1);
+			}
+			if(mfAccelMax < 0.01f) mfAccelMax = 1.0f;
 			if(mfAccelRate <= 0.0f) mfAccelRate = 4.0f;
-			Log(" Mouse acceleration: up to %.2fx at %.2f per second\n",
-				mfAccelMax, mfAccelRate);
+			if(mfAccelBase <= 0.0f) mfAccelBase = 1.0f;
+			if(mfAccelMax < mfAccelBase) mfAccelMax = mfAccelBase;
+			mfAccelGain = mfAccelBase;
+			Log(" Mouse acceleration: %.2fx rising to %.2fx at %.2f per second\n",
+				mfAccelBase, mfAccelMax, mfAccelRate);
 		}
 		mvMouseAbsPos = cVector2f(0,0);
 
@@ -76,6 +87,13 @@ namespace hpl {
 	//////////////////////////////////////////////////////////////////////////
 	// PUBLIC METHODS
 	//////////////////////////////////////////////////////////////////////////
+
+	//-----------------------------------------------------------------------
+
+	bool cMouseSDL::OwnsCursor() const
+	{
+		return mfAccelMax > 1.0f || mfAccelBase != 1.0f;
+	}
 
 	//-----------------------------------------------------------------------
 
@@ -105,8 +123,16 @@ namespace hpl {
 
 			if(pEvent->type == SDL_MOUSEMOTION)
 			{
-				mvMouseAbsPos = cVector2f((float)pEvent->motion.x,(float)pEvent->motion.y);
-				mvMouseAbsPos = (mvMouseAbsPos/vScreenSize)*vVirtualSize;
+				// With acceleration on, the cursor is the engine's own: it is
+				// moved by the accelerated delta below instead of following the
+				// system pointer, so the same feel applies to the inventory and
+				// the menus as to looking around. A stick cannot drive a
+				// pointer that only has one speed.
+				if(OwnsCursor() == false)
+				{
+					mvMouseAbsPos = cVector2f((float)pEvent->motion.x,(float)pEvent->motion.y);
+					mvMouseAbsPos = (mvMouseAbsPos/vScreenSize)*vVirtualSize;
+				}
 
 				Uint8 buttonState = pEvent->motion.state;
 
@@ -152,19 +178,38 @@ namespace hpl {
 		mvMouseRelPos = cVector2f((float)lX,(float)lY);
 		mvMouseRelPos = (mvMouseRelPos/vScreenSize)*vVirtualSize;
 
-		if(mfAccelMax > 1.0f)
+		if(OwnsCursor())
 		{
+			// Start in the middle rather than in a corner: nothing has told the
+			// engine where the cursor is until the first movement arrives.
+			if(mbCursorPlaced == false)
+			{
+				mvMouseAbsPos = vVirtualSize * 0.5f;
+				mbCursorPlaced = true;
+			}
+
 			const unsigned int lNow = SDL_GetTicks();
 			const float fDelta = (mlLastMotionMS == 0)
 				? 0.0f : (float)(lNow - mlLastMotionMS) / 1000.0f;
 			mlLastMotionMS = lNow;
 
-			// Standing still, or a gap long enough to count as a new intention,
-			// puts the gain back to one. That is what keeps a small deliberate
-			// nudge precise: acceleration has to be earned by holding on.
-			if((lX == 0 && lY == 0) || fDelta > 0.2f)
+			// Idle is measured from the last frame that actually moved, not
+			// from this one. A single empty frame means nothing: the pad sends
+			// movement on its own schedule and the game runs at twenty-odd
+			// frames a second, so empty frames arrive constantly even while the
+			// stick is held. Resetting on one of those would pin the gain to its
+			// starting value and the ramp would never be felt.
+			if(lX != 0 || lY != 0) mlLastMoveMS = lNow;
+
+			const bool bIdle = (mlLastMoveMS == 0)
+				|| (lNow - mlLastMoveMS) > 150;
+
+			// A real pause puts the gain back to the starting speed. That is
+			// what keeps a small deliberate nudge precise: acceleration has to
+			// be earned by holding on.
+			if(bIdle)
 			{
-				mfAccelGain = 1.0f;
+				mfAccelGain = mfAccelBase;
 			}
 			else
 			{
@@ -173,6 +218,13 @@ namespace hpl {
 			}
 
 			mvMouseRelPos = mvMouseRelPos * mfAccelGain;
+
+			mvMouseAbsPos += mvMouseRelPos;
+
+			if(mvMouseAbsPos.x < 0) mvMouseAbsPos.x = 0;
+			if(mvMouseAbsPos.y < 0) mvMouseAbsPos.y = 0;
+			if(mvMouseAbsPos.x > vVirtualSize.x) mvMouseAbsPos.x = vVirtualSize.x;
+			if(mvMouseAbsPos.y > vVirtualSize.y) mvMouseAbsPos.y = vVirtualSize.y;
 		}
 	}
 
