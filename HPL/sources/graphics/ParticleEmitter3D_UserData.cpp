@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with HPL1 Engine.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <cstdlib>
 #include "graphics/ParticleEmitter3D_UserData.h"
 #include "graphics/ParticleSystem3D.h"
 #include "graphics/RenderList.h"
@@ -170,11 +171,32 @@ namespace hpl {
 		///////// GENERAL /////////////
 		msName =  cString::ToString(apElement->Attribute("Name"),"");
 
+		// HPL_PARTICLE_SCALE thins every emitter by the same fraction. The
+		// outdoor maps attach a 3000 particle snowfall to the camera, so it
+		// fills the screen with blended billboards no matter where you look;
+		// that is affordable on a desktop and not on a tile-based mobile GPU,
+		// where it is the difference between a playable frame and a slideshow.
+		// Thinning beats switching the weather off: the snow is most of what
+		// the outside of this game looks like.
+		static const float sfParticleScale = []() {
+			const char *p = getenv("HPL_PARTICLE_SCALE");
+			const float f = p ? (float)atof(p) : 1.0f;
+			return (f > 0.0f && f <= 1.0f) ? f : 1.0f;
+		}();
+
 		mlMaxParticleNum = cString::ToInt(apElement->Attribute("MaxParticleNum"),1);
+		if(sfParticleScale < 1.0f)
+		{
+			const int lScaled = (int)((float)mlMaxParticleNum * sfParticleScale);
+			mlMaxParticleNum = lScaled > 1 ? lScaled : 1;
+		}
 
 		mbRespawn = cString::ToBool(apElement->Attribute("Respawn"),false);
 
+		// Scale the rate with the budget, or a thinned emitter fills up just as
+		// fast and then sits at its lower cap with a shorter trail.
 		mfParticlesPerSecond = cString::ToFloat(apElement->Attribute("ParticlesPerSecond"),1);
+		if(sfParticleScale < 1.0f) mfParticlesPerSecond *= sfParticleScale;
 		mfStartTimeOffset = cString::ToFloat(apElement->Attribute("StartTimeOffset"),0);
 
 		mfWarmUpTime = cString::ToFloat(apElement->Attribute("WarmUpTime"),0);
