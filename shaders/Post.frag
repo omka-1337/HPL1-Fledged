@@ -27,7 +27,15 @@ void main() {
 		// A spiral of taps rather than a separate downsample and blur: one pass,
 		// no extra targets. Coarser than the original's two-pass blur, but it
 		// spreads light the same way.
-		const int TAPS = 16;
+		//
+		// Eight taps, not sixteen. Each one is a scattered read from a
+		// half-float target, which is the most expensive thing this renderer
+		// asks of a Mali-G31: sixteen taps held the cabin at 14.8 fps and eight
+		// at 19.6, against 21.9 with no bloom at all. Gathering from a
+		// mipmapped level instead was tried and came out slower, because
+		// building the chain every frame costs more than the cache misses it
+		// saves.
+		const int TAPS = 8;
 		const float GOLDEN = 2.39996;
 		for (int i = 0; i < TAPS; ++i) {
 			float a = GOLDEN * float(i);
