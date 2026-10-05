@@ -69,6 +69,22 @@ namespace hpl {
 		return lBudget;
 	}
 
+	/**
+	 * Lets a shadow map size be set from the environment, so a device can be
+	 * tuned without a rebuild. Anything outside a sane range is ignored rather
+	 * than trusted.
+	 */
+	static int ShadowSizeOverride(const char *apName, int alDefault)
+	{
+		const char *pEnv = getenv(apName);
+		if(pEnv == NULL) return alDefault;
+
+		const long lValue = strtol(pEnv, NULL, 10);
+		return (lValue >= 64 && lValue <= 4096) ? (int)lValue : alDefault;
+	}
+
+	//-----------------------------------------------------------------------
+
 	/** HPL_POINT_SHADOWS=0 turns point light shadows off for comparison. */
 	static bool PointShadowsEnabled()
 	{
@@ -189,8 +205,21 @@ namespace hpl {
 		if(mpSkyProgram == NULL)
 			Error("Could not load the sky program; windows will show black\n");
 
-		mpShadowMap = new cShadowMap(1024);
-		mpShadowCube = new cShadowMapCube(512);
+		// A shadow map only has to resolve what the screen can show. 1024 and
+		// 512 were chosen against a 720p desktop window; on a 640x480 handheld
+		// panel they render four times the depth they can ever display, and
+		// shadow rendering is bandwidth, which is exactly what such a device is
+		// short of. HPL_SHADOW_SIZE and HPL_SHADOW_CUBE_SIZE override both.
+		const int lScreenH = (int)_llGfx->GetScreenSize().y;
+		const int lSpotSize = ShadowSizeOverride("HPL_SHADOW_SIZE",
+			lScreenH <= 540 ? 512 : 1024);
+		const int lCubeSize = ShadowSizeOverride("HPL_SHADOW_CUBE_SIZE",
+			lScreenH <= 540 ? 256 : 512);
+		Log(" Shadow maps: spot %d, cube %d (screen height %d)\n",
+			lSpotSize, lCubeSize, lScreenH);
+
+		mpShadowMap = new cShadowMap(lSpotSize);
+		mpShadowCube = new cShadowMapCube(lCubeSize);
 		if(mpDepthProgram == NULL || mpShadowMap->IsValid() == false)
 		{
 			Error("Could not set up shadow mapping - lights will not cast shadows\n");
