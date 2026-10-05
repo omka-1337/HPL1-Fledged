@@ -187,6 +187,21 @@ dgUnsigned32 dgThreads::GetPerfomanceTicks(dgUnsigned32 threadIndex) const
 
 void dgThreads::CreateThreaded(dgInt32 threads)
 {
+  // Newton's own worker pool is never used here and cannot be used safely on
+  // ARM. dgWorld's constructor asks for DG_MAXIMUN_THREADS purely to find out
+  // how many it could have, then immediately drops back to one, so the pool
+  // exists for a few microseconds at every map load. In that window
+  // DestroydgThreads sets m_exit and m_workToDo as plain variables with no
+  // barrier between them and the workers spinning on them. x86 hides that with
+  // its strong ordering; on aarch64 a worker sees the work count rise without
+  // seeing the exit flag, pops from an empty queue and dereferences rubbish.
+  // Caught as an intermittent SIGSEGV in dgThreads::DoWork on an RG40XX,
+  // roughly one launch in three, never reproducible under gdb.
+  //
+  // Forcing one thread here keeps the engine's actual behaviour (it runs
+  // single-threaded physics either way) and removes the window entirely.
+  threads = 1;
+
   if (m_numOfThreads)
   {
     DestroydgThreads();
