@@ -53,7 +53,13 @@ namespace hpl {
 				Error("Cannot load WAV file '%s'\n", fullPath.c_str());
 				return false;
 			}
-			_byteSize = samples * sizeof(short);
+			// Both loaders count FRAMES, not shorts: LoadWAVFile divides by
+			// bytesPerSample, which already includes the channel count. A
+			// stereo buffer therefore holds samples * channels shorts, and
+			// leaving the channels out handed OpenAL half the sound - audible
+			// as every stereo effect ending early, and 443 "Data size is not a
+			// multiple of frame size 4" warnings in one session on the device.
+			_byteSize = samples * _channels * sizeof(short);
 		}
 		else if (ext == "ogg") {
 			int error;
@@ -76,7 +82,10 @@ namespace hpl {
 					Error("Cannot load Ogg file '%s'\n", fullPath.c_str());
 					return false;
 				}
-				_byteSize = samples * sizeof(short);
+				// stb_vorbis_decode_filename returns samples per channel too,
+				// while writing samples * channels shorts. The streaming path
+				// below already multiplied by the channel count.
+				_byteSize = samples * _channels * sizeof(short);
 			}
 			_format = _channels == 1 ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
 		}
