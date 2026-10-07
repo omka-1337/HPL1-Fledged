@@ -54,6 +54,7 @@ namespace hpl {
 		/** The debug menu is desktop-only: its ImGui backend needs desktop GL. */
 		static bool ImGuiAvailable();
 		void SetInputGrab(bool abX);
+		void ReapplyInputGrab();
 
 		void SetVsyncActive(bool abX) override;
 
@@ -125,6 +126,7 @@ namespace hpl {
 	private:
 		cVector2l mvScreenSize;
 		cVector2f mvVirtualSize;
+		bool mbWantInputGrab = false;
 
 		//SDL Variables
 		SDL_Window *mpWindow;

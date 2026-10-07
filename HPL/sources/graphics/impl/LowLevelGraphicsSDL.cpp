@@ -326,6 +326,23 @@ namespace hpl {
 
 	//-----------------------------------------------------------------------
 
+	/**
+	 * Asks for the pointer lock again, without the logging.
+	 *
+	 * A wayland compositor ties the lock to the focused surface, so one granted
+	 * before the window had focus is not in force. Launching the game a second
+	 * time without rebooting left it exactly there: SDL reported relative mode
+	 * on, no relative motion arrived, the pointer walked to the edge of the
+	 * screen and the view stopped turning. Re-asking on every focus gain costs
+	 * nothing when the lock is already held.
+	 */
+	void cLowLevelGraphicsSDL::ReapplyInputGrab() {
+		if(mpWindow == NULL) return;
+		SDL_SetRelativeMouseMode(mbWantInputGrab ? SDL_TRUE : SDL_FALSE);
+	}
+
+	//-----------------------------------------------------------------------
+
 	void cLowLevelGraphicsSDL::SetInputGrab(bool abX) {
 //		SDL_SetWindowGrab(mpWindow, abX ? SDL_TRUE : SDL_FALSE);
 		// Relative mode is what makes looking around work: without it the
@@ -340,6 +357,14 @@ namespace hpl {
 		// stop arriving and the cursor would freeze against the side.
 		static const bool sbOwnCursor = getenv("HPL_MOUSE_ACCEL") != NULL;
 		const bool bWanted = abX || sbOwnCursor;
+
+		mbWantInputGrab = bWanted;
+
+		// Take the keyboard focus with it. Under a wayland compositor the
+		// pointer lock belongs to the focused surface, and a window that never
+		// got focus is told its request succeeded while no relative motion ever
+		// arrives.
+		if(bWanted && mpWindow) SDL_RaiseWindow(mpWindow);
 
 		const int lResult = SDL_SetRelativeMouseMode(bWanted ? SDL_TRUE : SDL_FALSE);
 		if(lResult != 0)

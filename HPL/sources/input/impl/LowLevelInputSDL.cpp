@@ -70,6 +70,17 @@ namespace hpl {
 		{
 			if(cLowLevelGraphicsSDL::ImGuiAvailable()) ImGui_ImplSDL2_ProcessEvent(&sdlEvent);
 
+			// The pointer lock follows the focused window under wayland, so ask
+			// for it again every time focus arrives. Without this, the second
+			// run of the game in a session came up with the lock granted on
+			// paper but never in force, and the view would not turn past the
+			// point where the pointer met the edge of the screen.
+			if(sdlEvent.type == SDL_WINDOWEVENT &&
+			   sdlEvent.window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
+			{
+				static_cast<cLowLevelGraphicsSDL*>(mpLowLevelGraphics)->ReapplyInputGrab();
+			}
+
 			// SDL_MOUSE* events are 0x04nn, SDL_KEY* events are 0x03nn
 			// don't forward mouse or key events to the game when the debug console
 			// is trying to capture them.
