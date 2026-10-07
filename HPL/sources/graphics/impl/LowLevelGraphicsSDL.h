@@ -59,6 +59,7 @@ namespace hpl {
 
 		cVector2f GetScreenSize() override;
 		cVector2f GetVirtualSize() override;
+		cVector2f GetVirtualMargin() override;
 		void SetVirtualSize(cVector2f avSize) override;
 
 		// RESOURCES

@@ -190,37 +190,13 @@ namespace hpl {
 		llGfx_->SetDepthTestActive(false);
 		llGfx_->SetBlendActive(true);
 
-		// The menus, the intro and the inventory are all laid out in a fixed
-		// 800x600 space, and stretching that across a 16:9 panel makes
-		// everything visibly wide - the first thing a Retroid Pocket 5 tester
-		// reported. Widen the projection instead of the picture, so the 4:3
-		// area keeps its shape and sits in the middle with empty space either
-		// side.
+		// The 2D layer is laid out in a fixed 800x600 space and is stretched to
+		// whatever shape the screen is. That distorts it on a wide panel, which
+		// is a deliberate choice: filling the screen matters more here than the
+		// menu keeping its proportions, and the alternative is bars down both
+		// sides.
 		auto orthoDim = llGfx_->GetVirtualSize();
-		auto screen = llGfx_->GetScreenSize();
-
-		float fLeft = 0, fRight = orthoDim.x, fBottom = orthoDim.y, fTop = 0;
-
-		if(screen.x > 0 && screen.y > 0 && orthoDim.x > 0 && orthoDim.y > 0)
-		{
-			const float fScreenAspect = screen.x / screen.y;
-			const float fVirtualAspect = orthoDim.x / orthoDim.y;
-
-			if(fScreenAspect > fVirtualAspect)
-			{
-				const float fExtra = (orthoDim.y * fScreenAspect - orthoDim.x) * 0.5f;
-				fLeft = -fExtra;
-				fRight = orthoDim.x + fExtra;
-			}
-			else if(fScreenAspect < fVirtualAspect)
-			{
-				const float fExtra = (orthoDim.x / fScreenAspect - orthoDim.y) * 0.5f;
-				fTop = -fExtra;
-				fBottom = orthoDim.y + fExtra;
-			}
-		}
-
-		cMatrixf orthoProjection = cMatrixf::CreateOrtho(fLeft, fRight, fBottom, fTop, -1, 1);
+		cMatrixf orthoProjection = cMatrixf::CreateOrtho(0, orthoDim.x, orthoDim.y, 0, -1, 1);
 
 		// selection of main and text programs
 		glyphProgram_->Bind();

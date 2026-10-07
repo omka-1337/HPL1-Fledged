@@ -137,6 +137,16 @@ namespace hpl {
 		 */
 		virtual cVector2f GetScreenSize()=0;
 		virtual cVector2f GetVirtualSize()=0;
+
+		/**
+		 * How far the 2D projection reaches outside the virtual size on each
+		 * side, in virtual units, when the screen is not the same shape as it.
+		 * The virtual space is 4:3 and a panel often is not, so the drawer
+		 * widens the projection rather than stretching the picture; this is the
+		 * margin that leaves, which a full screen backdrop has to cover if it
+		 * is not to leave bars down the sides.
+		 */
+		virtual cVector2f GetVirtualMargin()=0;
 		/**
 		 * Sets the virtual screen size. Default is 0-1
 		 * \param avSize

@@ -251,8 +251,15 @@ namespace hpl {
 
 		unsigned int mlFlags = SDL_WINDOW_OPENGL;
 
+		// SDL_WINDOW_FULLSCREEN asks the display to change mode to whatever the
+		// config says, and a handheld panel cannot do 800x600: the compositor
+		// takes the 4:3 image and stretches it across a 16:9 screen, which is
+		// what a Retroid Pocket 5 tester saw. FULLSCREEN_DESKTOP keeps the
+		// panel's own resolution and shape, so the game renders at 16:9 on a
+		// 16:9 screen and at 640x480 on a 640x480 one, whatever resolution the
+		// config carried over from the player's desktop copy of the game.
 		if (abFullscreen)
-			mlFlags |= SDL_WINDOW_FULLSCREEN;
+			mlFlags |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 
 		Log(" Creating display: %d x %d\n", alWidth, alHeight);
 		mpWindow = SDL_CreateWindow(asWindowCaption.c_str(),
@@ -626,6 +633,25 @@ namespace hpl {
 	cVector2f cLowLevelGraphicsSDL::GetVirtualSize()
 	{
 		return mvVirtualSize;
+	}
+
+	//-----------------------------------------------------------------------
+
+	cVector2f cLowLevelGraphicsSDL::GetVirtualMargin()
+	{
+		const cVector2f vScreen = GetScreenSize();
+		if(vScreen.x <= 0 || vScreen.y <= 0) return cVector2f(0,0);
+		if(mvVirtualSize.x <= 0 || mvVirtualSize.y <= 0) return cVector2f(0,0);
+
+		const float fScreenAspect = vScreen.x / vScreen.y;
+		const float fVirtualAspect = mvVirtualSize.x / mvVirtualSize.y;
+
+		if(fScreenAspect > fVirtualAspect)
+			return cVector2f((mvVirtualSize.y * fScreenAspect - mvVirtualSize.x) * 0.5f, 0);
+		if(fScreenAspect < fVirtualAspect)
+			return cVector2f(0, (mvVirtualSize.x / fScreenAspect - mvVirtualSize.y) * 0.5f);
+
+		return cVector2f(0,0);
 	}
 
 	//-----------------------------------------------------------------------
