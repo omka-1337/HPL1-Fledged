@@ -129,7 +129,10 @@ namespace hpl {
 		bool mbWantInputGrab = false;
 
 		//SDL Variables
-		SDL_Window *mpWindow;
+		// Never initialised, and the input module's constructor asks for the
+		// pointer lock before the window exists, so a NULL check on rubbish
+		// passes and SDL dereferences it.
+		SDL_Window *mpWindow = nullptr;
 		SDL_GLContext mpGLContext;
 
 		//Texture

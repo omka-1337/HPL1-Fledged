@@ -270,6 +270,13 @@ namespace hpl {
 			return false;
 		}
 
+		// Ask for the keyboard focus now that there is a window to give it to.
+		// Under a wayland compositor the pointer lock belongs to the focused
+		// surface, and a second run in the same session came up without focus:
+		// SDL reported the lock granted while no relative motion ever arrived
+		// and the view would not turn past the edge of the screen.
+		SDL_RaiseWindow(mpWindow);
+
 		// A window manager may hand back a different size than requested.
 		int lRealWidth = alWidth, lRealHeight = alHeight;
 		SDL_GetWindowSize(mpWindow, &lRealWidth, &lRealHeight);
@@ -359,12 +366,6 @@ namespace hpl {
 		const bool bWanted = abX || sbOwnCursor;
 
 		mbWantInputGrab = bWanted;
-
-		// Take the keyboard focus with it. Under a wayland compositor the
-		// pointer lock belongs to the focused surface, and a window that never
-		// got focus is told its request succeeded while no relative motion ever
-		// arrives.
-		if(bWanted && mpWindow) SDL_RaiseWindow(mpWindow);
 
 		const int lResult = SDL_SetRelativeMouseMode(bWanted ? SDL_TRUE : SDL_FALSE);
 		if(lResult != 0)
