@@ -16,6 +16,8 @@
  * You should have received a copy of the GNU General Public License
  * along with HPL1 Engine.  If not, see <http://www.gnu.org/licenses/>.
  */
+#include <filesystem>
+#include <system_error>
 #include "resources/Resources.h"
 
 #include "resources/FileSearcher.h"
@@ -193,17 +195,47 @@ namespace hpl {
 
 	//-----------------------------------------------------------------------
 
+	/**
+	 * Finds a file in a directory whatever case it was asked for.
+	 *
+	 * The game asks for "english.lang" by default while the file shipped with
+	 * it is "English.lang". That works on the exFAT card a handheld usually
+	 * has, and fails on any case sensitive filesystem, where the language file
+	 * is not found, SetLanguageFile gives up, the resource directories for the
+	 * language are never registered, and every font and texture after it fails
+	 * too. Two Retroid Pocket 5 testers saw that as a black screen with sound
+	 * and then a crash, while the same card contents worked on an RG353V.
+	 */
+	static tString ResolveIgnoringCase(const tString &asDir, const tString &asFile)
+	{
+		const tString sExact = asDir + asFile;
+		if(FileExists(cString::To16Char(sExact))) return sExact;
+
+		std::error_code err;
+		for(const auto &entry : std::filesystem::directory_iterator(asDir, err))
+		{
+			if(err) break;
+			const tString sName = entry.path().filename().string();
+			if(cString::ToLowerCase(sName) == cString::ToLowerCase(asFile))
+				return asDir + sName;
+		}
+		return "";
+	}
+
+	//-----------------------------------------------------------------------
+
 	bool cResources::SetLanguageFile(const tString &asFile)
 	{
 		// [ZM] made the decision to not use the file searcher for language files.
 		// /config was already the de-facto only position for them and with resource
 		// overloading this makes path handling setup less awkward.
-		tString sOrigPath = "config/" + asFile;
-		tString sRehatchedPath = "rehatched/config/" + asFile;
+		tString sOrigPath = ResolveIgnoringCase("config/", asFile);
+		tString sRehatchedPath = ResolveIgnoringCase("rehatched/config/", asFile);
+		if(sRehatchedPath.empty()) sRehatchedPath = "rehatched/config/" + asFile;
 
-		if (FileExists(cString::To16Char(sOrigPath)) == false)
+		if (sOrigPath.empty())
 		{
-			Error("Couldn't find language file '%s'\n",asFile.c_str());
+			Error("Couldn't find language file '%s' in config/\n",asFile.c_str());
 			return false;
 		}
 		if (FileExists(cString::To16Char(sRehatchedPath)) == false)
