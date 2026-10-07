@@ -125,6 +125,58 @@ namespace hpl {
 
 	//-----------------------------------------------------------------------
 
+	static unsigned int gPlaceholder2D = 0;
+	static unsigned int gPlaceholderCube = 0;
+
+	void cShadowMap::CreatePlaceholders()
+	{
+		if(gPlaceholder2D != 0) return;
+
+		const float fFarthest = 1.0f;
+
+		glGenTextures(1, &gPlaceholder2D);
+		glBindTexture(GL_TEXTURE_2D, gPlaceholder2D);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT24, 1, 1, 0,
+					 GL_DEPTH_COMPONENT, GL_FLOAT, &fFarthest);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+		glGenTextures(1, &gPlaceholderCube);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, gPlaceholderCube);
+		for(int i=0; i<6; ++i)
+		{
+			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 0, GL_DEPTH_COMPONENT24,
+						 1, 1, 0, GL_DEPTH_COMPONENT, GL_FLOAT, &fFarthest);
+		}
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+		glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+
+		glBindTexture(GL_TEXTURE_2D, 0);
+		glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+	}
+
+	//-----------------------------------------------------------------------
+
+	void cShadowMap::BindPlaceholder(int alUnit)
+	{
+		if(gPlaceholder2D == 0) return;
+
+		glActiveTexture(GL_TEXTURE0 + alUnit);
+		if(alUnit == 3) glBindTexture(GL_TEXTURE_CUBE_MAP, gPlaceholderCube);
+		else            glBindTexture(GL_TEXTURE_2D, gPlaceholder2D);
+		glActiveTexture(GL_TEXTURE0);
+	}
+
+	//-----------------------------------------------------------------------
+
 	void cShadowMap::BindAsTexture(int alUnit)
 	{
 		glActiveTexture(GL_TEXTURE0 + alUnit);

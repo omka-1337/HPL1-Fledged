@@ -187,6 +187,7 @@ namespace hpl {
 		void FetchOcclusionQueries();
 
 	private:
+
 		void InitSkyBox();
 
 		//Render steps

@@ -178,6 +178,15 @@ namespace hpl {
 			mpLightProgram->UnBind();
 		}
 
+		// A shadow sampler with nothing under it is undefined behaviour, not a
+		// black sample. Only one of the two shadow units is ever filled with a
+		// real map, and neither is when a light casts no shadow, so the other
+		// sampler points at whatever happened to be there. Mali tolerates it;
+		// a Retroid Pocket 5 on Adreno crashed on entering the game while the
+		// menus, which use none of this, were fine. These stand in so both
+		// samplers always have a complete texture of the right type under them.
+		cShadowMap::CreatePlaceholders();
+
 		mpDepthProgram = _programManager->CreateProgram("PreZ.vert", "Depth.frag");
 		// A single flat-normal texel, handed to every material that has no
 		// normal map of its own (see Material_Universal::GetTexture).
@@ -958,6 +967,16 @@ namespace hpl {
 
 				if(bSpotShadow) mpShadowMap->BindAsTexture(2);
 				else            mpShadowCube->BindAsTexture(3);
+
+				// Fill whichever one the branch above did not.
+				if(bSpotShadow) cShadowMap::BindPlaceholder(3);
+				else            cShadowMap::BindPlaceholder(2);
+			}
+			else
+			{
+				// No shadow at all: both samplers would be looking at nothing.
+				cShadowMap::BindPlaceholder(2);
+				cShadowMap::BindPlaceholder(3);
 			}
 
 			// Scissors the pass down to the light's screen footprint.

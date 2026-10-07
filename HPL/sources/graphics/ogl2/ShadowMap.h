@@ -41,6 +41,17 @@ namespace hpl {
 
 		void BindAsTexture(int alUnit);
 
+		/**
+		 * One by one texel depth textures, a 2D and a cube, carrying the
+		 * comparison mode the shadow samplers expect. They shadow nothing: they
+		 * are there so a shadow sampler is never left pointing at an absent or
+		 * wrongly typed texture, which is undefined and crashes some drivers.
+		 * Only one of the two shadow units ever holds a real map, and neither
+		 * does for a light that casts no shadow.
+		 */
+		static void CreatePlaceholders();
+		static void BindPlaceholder(int alUnit);
+
 		int GetSize() const { return mlSize; }
 
 	private:
