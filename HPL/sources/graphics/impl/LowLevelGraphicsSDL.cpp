@@ -295,6 +295,26 @@ namespace hpl {
 			return false;
 		}
 
+		// Everything drawn is measured in the drawable, not in the window.
+		//
+		// A compositor that scales reports a window smaller than the buffer it
+		// actually hands over: ask it for the window and the viewport comes out
+		// a fraction of the frame, which puts the whole picture in the bottom
+		// left corner on a black field, GL's origin being down there. A tester
+		// on a Retroid Pocket 5 saw exactly that. Only the drawable size is
+		// safe for the viewport, the off-screen targets and the camera's shape.
+		// It needs the context, so it cannot be asked any earlier than this.
+		int lDrawW = 0, lDrawH = 0;
+		SDL_GL_GetDrawableSize(mpWindow, &lDrawW, &lDrawH);
+		if (lDrawW > 0 && lDrawH > 0 &&
+			(lDrawW != (int)mvScreenSize.x || lDrawH != (int)mvScreenSize.y))
+		{
+			Log("  Drawable is %d x %d, not %d x %d - using the drawable\n",
+				lDrawW, lDrawH, (int)mvScreenSize.x, (int)mvScreenSize.y);
+			mvScreenSize.x = lDrawW;
+			mvScreenSize.y = lDrawH;
+		}
+
 		// GL defaults
 		SetClearColor(cColor::Black);
 		SetClearDepth(1.0f);

@@ -175,6 +175,31 @@ namespace hpl {
 		int lX,lY;
 		SDL_GetRelativeMouseState(&lX, &lY);
 
+		// One line, once, saying whether relative motion is actually arriving.
+		// SDL reporting relative mode on is not the same as the compositor
+		// delivering it, and that difference is invisible from a log: the view
+		// simply stops turning. Function-local so it costs nothing after it has
+		// fired.
+		{
+			static int slFrames = 0;
+			static int slFramesWithMotion = 0;
+			static bool sbReported = false;
+
+			if(sbReported == false)
+			{
+				++slFrames;
+				if(lX != 0 || lY != 0) ++slFramesWithMotion;
+
+				if(slFrames >= 600)
+				{
+					Log(" Mouse after %d frames: %d carried relative motion, mode is %s\n",
+						slFrames, slFramesWithMotion,
+						SDL_GetRelativeMouseMode() == SDL_TRUE ? "on" : "off");
+					sbReported = true;
+				}
+			}
+		}
+
 		mvMouseRelPos = cVector2f((float)lX,(float)lY);
 		mvMouseRelPos = (mvMouseRelPos/vScreenSize)*vVirtualSize;
 
