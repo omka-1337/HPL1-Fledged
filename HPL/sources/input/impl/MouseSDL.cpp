@@ -227,6 +227,19 @@ namespace hpl {
 		mvMouseRelPos = cVector2f((float)lX,(float)lY);
 		mvMouseRelPos = (mvMouseRelPos/vScreenSize)*vVirtualSize;
 
+		// That division makes the pointer resolution dependent, and the pad is
+		// not: gptokeyb moves it a fixed number of pixels whatever the panel,
+		// so the same push covers less than half as much of a 1080p screen as
+		// of a 480p one and both the view and the cursor crawl. A reviewer on a
+		// Retroid Pocket 5 reported exactly that. Scaling back out against the
+		// height the mapping was tuned on undoes it, and leaves the devices it
+		// was tuned on untouched.
+		if(OwnsCursor() && vScreenSize.y > 0)
+		{
+			const float kTunedForHeight = 480.0f;
+			mvMouseRelPos = mvMouseRelPos * (vScreenSize.y / kTunedForHeight);
+		}
+
 		if(OwnsCursor())
 		{
 			// Start in the middle rather than in a corner: nothing has told the
