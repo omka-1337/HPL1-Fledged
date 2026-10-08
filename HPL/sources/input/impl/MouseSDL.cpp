@@ -23,7 +23,6 @@
 #include <cstring>
 
 #include "graphics/LowLevelGraphics.h"
-#include "graphics/impl/LowLevelGraphicsSDL.h"
 #include "system/Log.h"
 #include "input/impl/LowLevelInputSDL.h"
 
@@ -59,7 +58,6 @@ namespace hpl {
 		mlLastMotionMS = 0;
 		mbCursorPlaced = false;
 		mlLastMoveMS = 0;
-		mlPointerRecentres = 0;
 		if(const char *pEnv = getenv("HPL_MOUSE_ACCEL"))
 		{
 			mfAccelMax = (float)atof(pEnv);
@@ -177,26 +175,6 @@ namespace hpl {
 		int lX,lY;
 		SDL_GetRelativeMouseState(&lX, &lY);
 
-		// The jump produced by re-centring the pointer is not the player's
-		// movement, so it is thrown away rather than turning the view.
-		static bool sbIgnoreThisDelta = false;
-		if(sbIgnoreThisDelta)
-		{
-			lX = 0;
-			lY = 0;
-			sbIgnoreThisDelta = false;
-		}
-
-		{
-			cLowLevelGraphicsSDL *pGfx =
-				static_cast<cLowLevelGraphicsSDL*>(mpLowLevelGraphics);
-			if(pGfx->CentrePointerIfNearEdge())
-			{
-				sbIgnoreThisDelta = true;
-				++mlPointerRecentres;
-			}
-		}
-
 		// One line, once, saying whether relative motion is actually arriving.
 		// SDL reporting relative mode on is not the same as the compositor
 		// delivering it, and that difference is invisible from a log: the view
@@ -214,11 +192,9 @@ namespace hpl {
 
 				if(slFrames >= 600)
 				{
-					Log(" Mouse after %d frames: %d carried relative motion, mode is %s,"
-						" pointer re-centred %d times\n",
+					Log(" Mouse after %d frames: %d carried relative motion, mode is %s\n",
 						slFrames, slFramesWithMotion,
-						SDL_GetRelativeMouseMode() == SDL_TRUE ? "on" : "off",
-						mlPointerRecentres);
+						SDL_GetRelativeMouseMode() == SDL_TRUE ? "on" : "off");
 					sbReported = true;
 				}
 			}

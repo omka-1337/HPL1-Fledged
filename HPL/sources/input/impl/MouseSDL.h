@@ -73,7 +73,6 @@ namespace hpl {
 		// speeds up a movement that is held.
 		float mfAccelMax, mfAccelRate, mfAccelBase, mfAccelGain;
 		unsigned int mlLastMotionMS, mlLastMoveMS;
-		int mlPointerRecentres;
 		bool mbCursorPlaced;
 
 		std::vector<bool> mvMButtonArray;

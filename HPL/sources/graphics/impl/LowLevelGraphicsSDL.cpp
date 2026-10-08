@@ -363,40 +363,6 @@ namespace hpl {
 	 * screen and the view stopped turning. Re-asking on every focus gain costs
 	 * nothing when the lock is already held.
 	 */
-	/**
-	 * Pulls the pointer back to the middle of the window if it has wandered
-	 * near an edge. Returns true when it moved it.
-	 *
-	 * Relative mouse mode is supposed to pin the pointer so that looking around
-	 * never runs out of room. The compositor on this handheld sends the
-	 * relative motion but does not always take the pointer out of play, so it
-	 * travels until it meets the side of the screen and the motion simply
-	 * stops: the view turns part of the way round and then will not go on.
-	 * Re-centring costs nothing when the pointer really is pinned, because then
-	 * it never leaves the middle.
-	 */
-	bool cLowLevelGraphicsSDL::CentrePointerIfNearEdge() {
-		if(mpWindow == NULL) return false;
-
-		int lW = 0, lH = 0;
-		SDL_GetWindowSize(mpWindow, &lW, &lH);
-		if(lW <= 0 || lH <= 0) return false;
-
-		int lX = 0, lY = 0;
-		SDL_GetMouseState(&lX, &lY);
-
-		const int lMargin = (lW < lH ? lW : lH) / 8;
-		if(lX >= lMargin && lY >= lMargin && lX <= lW - lMargin && lY <= lH - lMargin)
-		{
-			return false;
-		}
-
-		SDL_WarpMouseInWindow(mpWindow, lW / 2, lH / 2);
-		return true;
-	}
-
-	//-----------------------------------------------------------------------
-
 	void cLowLevelGraphicsSDL::ReapplyInputGrab() {
 		if(mpWindow == NULL) return;
 		SDL_SetRelativeMouseMode(mbWantInputGrab ? SDL_TRUE : SDL_FALSE);
