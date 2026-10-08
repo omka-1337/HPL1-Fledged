@@ -392,13 +392,6 @@ namespace hpl {
 	//-----------------------------------------------------------------------
 
 	void cLowLevelGraphicsSDL::SetInputGrab(bool abX) {
-		// Confine the pointer to the window as well as asking for relative
-		// motion. The two go together: relative mode is meant to take the
-		// pointer out of play, and where a compositor grants the motion but not
-		// that, the pointer walks to the side of the screen and the view stops
-		// turning. Confining it is the compositor's own job and needs no
-		// warping, which is what made the camera shake when it was tried.
-		if(mpWindow) SDL_SetWindowGrab(mpWindow, bWanted ? SDL_TRUE : SDL_FALSE);
 		// Relative mode is what makes looking around work: without it the
 		// pointer is an absolute position that stops at the edge of the screen,
 		// and turning stops with it. It is not guaranteed to be available, so
@@ -413,6 +406,14 @@ namespace hpl {
 		const bool bWanted = abX || sbOwnCursor;
 
 		mbWantInputGrab = bWanted;
+
+		// Confine the pointer to the window as well as asking for relative
+		// motion. The two go together: relative mode is meant to take the
+		// pointer out of play, and where a compositor grants the motion but not
+		// that, the pointer walks to the side of the screen and the view stops
+		// turning. Confining it is the compositor's own job and needs no
+		// warping, which is what made the camera shake when it was tried.
+		if(mpWindow) SDL_SetWindowGrab(mpWindow, bWanted ? SDL_TRUE : SDL_FALSE);
 
 		const int lResult = SDL_SetRelativeMouseMode(bWanted ? SDL_TRUE : SDL_FALSE);
 		if(lResult != 0)
