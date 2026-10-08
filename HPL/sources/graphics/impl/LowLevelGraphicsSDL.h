@@ -54,6 +54,7 @@ namespace hpl {
 		/** The debug menu is desktop-only: its ImGui backend needs desktop GL. */
 		static bool ImGuiAvailable();
 		void SetInputGrab(bool abX);
+		bool CentrePointerIfNearEdge();
 		void ReapplyInputGrab();
 
 		void SetVsyncActive(bool abX) override;
