@@ -365,13 +365,40 @@ namespace hpl {
 	 */
 	void cLowLevelGraphicsSDL::ReapplyInputGrab() {
 		if(mpWindow == NULL) return;
-		SDL_SetRelativeMouseMode(mbWantInputGrab ? SDL_TRUE : SDL_FALSE);
+
+		SDL_SetWindowGrab(mpWindow, mbWantInputGrab ? SDL_TRUE : SDL_FALSE);
+
+		// Off and on again, not straight on.
+		//
+		// The compositor grants the pointer lock to whoever has the focus at
+		// the moment it is asked, and the frontend holds the focus on every run
+		// of the game but the first after a boot. Asking again once the focus
+		// arrives does nothing, because SDL already believes the mode is on and
+		// returns without telling the compositor anything: the motion starts
+		// coming through while the pointer was never taken out of play, so it
+		// walks to the side of the screen and the view stops turning there.
+		// Clearing it first makes the second call a real request.
+		if(mbWantInputGrab)
+		{
+			SDL_SetRelativeMouseMode(SDL_FALSE);
+			SDL_SetRelativeMouseMode(SDL_TRUE);
+		}
+		else
+		{
+			SDL_SetRelativeMouseMode(SDL_FALSE);
+		}
 	}
 
 	//-----------------------------------------------------------------------
 
 	void cLowLevelGraphicsSDL::SetInputGrab(bool abX) {
-//		SDL_SetWindowGrab(mpWindow, abX ? SDL_TRUE : SDL_FALSE);
+		// Confine the pointer to the window as well as asking for relative
+		// motion. The two go together: relative mode is meant to take the
+		// pointer out of play, and where a compositor grants the motion but not
+		// that, the pointer walks to the side of the screen and the view stops
+		// turning. Confining it is the compositor's own job and needs no
+		// warping, which is what made the camera shake when it was tried.
+		if(mpWindow) SDL_SetWindowGrab(mpWindow, bWanted ? SDL_TRUE : SDL_FALSE);
 		// Relative mode is what makes looking around work: without it the
 		// pointer is an absolute position that stops at the edge of the screen,
 		// and turning stops with it. It is not guaranteed to be available, so
