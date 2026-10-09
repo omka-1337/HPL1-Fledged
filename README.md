@@ -81,21 +81,11 @@ any particular handheld.
 
 ## License
 
-GPL-3.0-or-later, and it cannot be anything else. Frictional Games released the
-HPL1 engine under the GPL; HPL1 Rehatched is a derivative of it, this is a
-derivative of that, and the licence travels with the code. A permissive licence
-here would simply be void.
+GPL-3.0-or-later (required: HPL1 was released under GPL by Frictional Games; this is a derivative). See [LICENSE](LICENSE) for more information.
 
-`LICENSE` is the GPL v3 text verbatim. Who wrote what is readable from the file
-headers: the 2006-2010 Frictional Games notice marks the original engine
-sources, an Omka1337 notice marks files written for this fork, with the help of
-Claude Code stated there rather than hidden, and files with neither
-are zenmumbler's HPL1 Rehatched additions, which carried no header. All of it is
-under the same licence as one work.
+- Frictional Games (2006–2010) — original engine sources
+- zenmumbler — HPL1 Rehatched additions
+- Omka1337 (+ AI agent) — this fork
 
-The vendored dependencies are all under permissive, GPL-compatible terms. See
-`NOTICE` for which is which. OpenAL and SDL2 are linked as system libraries and
-are not redistributed here.
-
-No game data is included or implied. Penumbra: Overture's assets stay the
-property of Frictional Games; you need your own copy of the game.
+Vendored dependencies are permissive / GPL-compatible (see NOTICE). OpenAL and SDL2 are system libraries, not redistributed.
+Game data is not included. Assets from the Penumbra game series remain the property of Frictional Games—you will need your own copy of the game.
