@@ -29,7 +29,20 @@ namespace hpl {
 
 	cLogicTimer::cLogicTimer(int alUpdatesPerSec)
 	{
-		mlMaxUpdates = alUpdatesPerSec;
+		// How far behind the logic may run before the game slows down instead
+		// of trying to catch up.
+		//
+		// This used to be a full second's worth of steps. A machine that cannot
+		// hold the frame rate then spends every frame running sixty physics
+		// updates, which takes it about a second, so it falls a second further
+		// behind and does the same again: the frame time collapses from 70 ms
+		// to well over a second and stays there. A tester on an R36S saw the
+		// room run at 14 fps for a quarter of a minute and then drop to 0.7,
+		// with one frame taking ten seconds. Eight steps is 130 ms of
+		// simulation, enough for anything that renders faster than 7 fps, and
+		// below that the game runs slow rather than seizing up.
+		const int lCatchUpLimit = 8;
+		mlMaxUpdates = (alUpdatesPerSec < lCatchUpLimit) ? alUpdatesPerSec : lCatchUpLimit;
 		mlUpdateCount = 0;
 
 		SetUpdatesPerSec(alUpdatesPerSec);
