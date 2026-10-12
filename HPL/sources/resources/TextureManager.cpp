@@ -39,11 +39,19 @@ namespace hpl {
 
 
 	static bool ResolveCubemapPaths(const tString &name, std::vector<tString> &paths) {
-		auto baseName = cString::GetFileName(name);
-		auto ext = cString::GetFileExt(name);
+		// A cube map is named in the .mat without an extension - "ice_cave_cube1"
+		// - because the six faces are separate files. Gluing a bare "." onto that
+		// asks for "ice_cave_cube1_pos_x..jpg", which matches nothing: SetFileExt
+		// only replaces an extension that is already there. Every face went
+		// missing in silence and the surface drew with no reflection at all.
+		//
+		// Stripping any extension instead and letting the search try each
+		// supported format covers both spellings, and does not trust a declared
+		// extension the faces may not actually use.
+		auto baseName = cString::SetFileExt(cString::GetFileName(name), "");
 
 		for (int ix = 0; ix < 6; ++ix) {
-			auto sideName = baseName + s_CubeSideSuffixes[ix] + "." + ext;
+			auto sideName = baseName + s_CubeSideSuffixes[ix];
 			auto sidePath = FileSearcher::ResolveAssetName(sideName, { s_fileFormats });
 			if (sidePath.length() == 0) {
 				return false;
@@ -193,7 +201,7 @@ namespace hpl {
 			std::vector<Bitmap> bitmaps;
 
 			if (! ResolveCubemapPaths(fileName, paths)) {
-				Error("No textures found for animation %s\n", fileName.c_str());
+				Error("No cube map faces found for %s\n", fileName.c_str());
 				EndLoad();
 				return nullptr;
 			}

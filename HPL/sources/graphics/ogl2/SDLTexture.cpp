@@ -254,6 +254,15 @@ namespace hpl {
 
 		PostCreation(GLTarget);
 
+		// PostCreation wraps everything by repeating it, which is right for a
+		// wall texture and wrong here: a reflection samples right up to the edge
+		// of a face, and a repeat there fetches from the far side of the same
+		// face instead of the neighbouring one, drawing a seam along every join
+		// of the cube. Clamping is also what the material asks for.
+		glTexParameteri(GLTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GLTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GLTarget, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+
 		return true;
 	}
 

@@ -296,9 +296,13 @@ namespace hpl {
 					cMath::MatrixTranspose(cMath::MatrixInverse(modelMatrix)));
 			}
 
+			// A material that needs more than the one matrix says so here rather
+			// than making every object in the pass pay for it. The reflective
+			// ice is the only one so far: it wants the model matrix and the
+			// camera to work out what the surface is reflecting.
 			if (apSettings->mpProgramSetup)
 			{
-				// apSettings->mpProgramSetup->SetupMatrix(mpModelMatrix,apSettings);
+				apSettings->mpProgramSetup->SetupMatrix(&modelMatrix, apSettings);
 			}
 		}
 

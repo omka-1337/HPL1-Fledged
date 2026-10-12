@@ -49,6 +49,7 @@ namespace hpl {
 		eMaterialBlendMode _blendMode;
 		float _alphaCutoff;
 		eMaterialSpecularMode _specularMode;
+		bool _reflects;
 
 		static iTexture *_flatNormalMap;
 	};

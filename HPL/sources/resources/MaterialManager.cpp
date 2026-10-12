@@ -53,6 +53,10 @@ namespace hpl {
 		// Often declared with an empty File, but 38 materials do carry one and
 		// look wrong without it. An empty File is dropped before this matters.
 		else if (typeLower == "illumination") return eMaterialTexture_Illumination;
+		// One material uses this, the reflective ice in the ice cave. It was
+		// skipped as unsupported until now, which is why that surface looked
+		// like flat paint.
+		else if (typeLower == "cubemap") return eMaterialTexture_CubeMap;
 
 		Warning("Skipping unsupported texture type `%s`\n", type.c_str());
 		return eMaterialTexture_None;
@@ -99,7 +103,10 @@ namespace hpl {
 		}
 
 		iTexture* texture;
-		if (animMode != eTextureAnimMode_None)
+		if (textureType == eMaterialTexture_CubeMap)
+			// Six faces named after the file, not one image: a different call.
+			texture = texMgr->CreateCubeMap(sFile);
+		else if (animMode != eTextureAnimMode_None)
 			// TODO: [Rehatched] unify these two APIs, this is a mess
 			texture = texMgr->CreateAnim2D(sFile, animMode);
 		else

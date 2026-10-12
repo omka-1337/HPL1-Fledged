@@ -10,6 +10,8 @@
 #include "system/String.h"
 #include "graphics/Renderer3D.h"
 #include "scene/PortalContainer.h"
+#include "scene/Camera.h"
+#include "math/Math.h"
 
 namespace hpl {
 
@@ -36,6 +38,46 @@ namespace hpl {
 	};
 
 	static cAmbProgramSetup gAmbProgramSetup;
+
+	/**
+	 * The same as the ambient setup, plus what a reflection needs: where the
+	 * surface is in the world and where it is being looked at from. Only the
+	 * reflective material asks for this, so nothing else in the pass pays the
+	 * two extra matrices.
+	 */
+	class cEnvProgramSetup : public cAmbProgramSetup
+	{
+	public:
+		/**
+		 * The program these uniforms belong to. Programs are cached by name, so
+		 * every reflective material shares one pointer and one static setup.
+		 */
+		iGpuProgram *mpFor = NULL;
+
+		void SetupMatrix(cMatrixf *apModelMatrix, cRenderSettings* apRenderSettings) {
+			if(apModelMatrix == NULL || apRenderSettings == NULL) return;
+			if(apRenderSettings->mpProgram == NULL) return;
+
+			// The same surface is also drawn by the depth pass and by one pass
+			// per light, each with its own program, and those have no eyePos and
+			// not always a model matrix. Setting a uniform that is not there
+			// writes a warning, which would be once per object per frame for the
+			// whole time the ice is on screen.
+			if(apRenderSettings->mpProgram != mpFor) return;
+
+			apRenderSettings->mpProgram->SetMatrixf("model", *apModelMatrix);
+			apRenderSettings->mpProgram->SetMatrixf("normalMatrix",
+				cMath::MatrixTranspose(cMath::MatrixInverse(*apModelMatrix)));
+
+			if(apRenderSettings->mpCamera)
+			{
+				const cVector3f vEye = apRenderSettings->mpCamera->GetPosition();
+				apRenderSettings->mpProgram->SetVec3f("eyePos", vEye.x, vEye.y, vEye.z);
+			}
+		}
+	};
+
+	static cEnvProgramSetup gEnvProgramSetup;
 
 	iTexture *Material_Universal::_flatNormalMap = NULL;
 
@@ -102,6 +144,11 @@ namespace hpl {
 	{
 		const MaterialTypeTraits traits = TraitsForType(asTypeName);
 
+		// Kept out of MaterialTypeTraits deliberately: one material in the game
+		// is reflective, and widening that struct would mean touching every
+		// branch of it for a single case.
+		_reflects = cString::ToLowerCase(asTypeName) == "environmentmapreflect";
+
 		mbIsTransperant = traits.transparent;
 		_blendMode = traits.blendMode;
 		_specularMode = traits.specular;
@@ -144,6 +191,24 @@ namespace hpl {
 				? "Unlit.frag"
 				: (bHasIllumination ? "UniversalIllum.frag" : "Universal.frag");
 
+			if(_reflects)
+			{
+				// Its own pair rather than more branches in the common shader:
+				// the reflection needs a normal and a world position, which the
+				// ambient vertex shader has no reason to carry for everything
+				// else in the scene.
+				_program = mpProgramManager->CreateProgram("UniversalEnv.vert",
+														   "UniversalEnv.frag");
+				if(_program)
+				{
+					_program->Bind();
+					_program->SetTextureBindingIndex("envMap", 6);
+					_program->UnBind();
+					gEnvProgramSetup.mpFor = _program;
+				}
+				return _program;
+			}
+
 			_program = mpProgramManager->CreateProgram("Universal.vert", pFragment);
 
 			// Programs are cached by name, so this costs one extra program
@@ -162,7 +227,8 @@ namespace hpl {
 
 	iMaterialProgramSetup * Material_Universal::GetProgramSetup()
 	{
-		return &gAmbProgramSetup;
+		return _reflects ? (iMaterialProgramSetup*)&gEnvProgramSetup
+						 : (iMaterialProgramSetup*)&gAmbProgramSetup;
 	}
 
 	//------------------------------------------------------------------------------------
@@ -201,6 +267,10 @@ namespace hpl {
 			// state tree binds one program for the whole pass.
 			iTexture *pNormal = mvTexture[eMaterialTexture_Normal];
 			return pNormal ? pNormal : _flatNormalMap;
+		}
+		if (alUnit == 6)
+		{
+			return _reflects ? mvTexture[eMaterialTexture_CubeMap] : NULL;
 		}
 		if (alUnit == 5)
 		{
