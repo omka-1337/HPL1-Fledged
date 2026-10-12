@@ -138,6 +138,14 @@ namespace hpl {
 		bool GetDepthTest() const { return mbDepthTest; }
 		void SetDepthTest(bool abX) { mbDepthTest = abX; }
 
+		/**
+		 * The .mat's Main Value, whose meaning is the material type's own: the
+		 * acid pools read it as how far the refraction pulls the scene sideways,
+		 * in pixels. It was being parsed by nobody at all.
+		 */
+		float GetValue() const { return mfValue; }
+		void SetValue(float afX) { mfValue = afX; }
+
 		const tString& GetPhysicsMaterial(){ return msPhysicsMaterial;}
 		void SetPhysicsMaterial(const tString& asName){ msPhysicsMaterial = asName;}
 
@@ -149,6 +157,7 @@ namespace hpl {
 		bool mbIsTransperant;
 		bool mbDepthTest = true;
 		bool mbHasAlpha;
+		float mfValue = 0.0f;
 
 		tString msPhysicsMaterial;
 

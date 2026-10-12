@@ -13,6 +13,8 @@
 #include "scene/Camera.h"
 #include "math/Math.h"
 
+#include <cstdlib>
+
 namespace hpl {
 
 	//////////////////////////////////////////////////////////////////////////
@@ -129,9 +131,14 @@ namespace hpl {
 		if(sType == "diffusespecular")
 			return { eMaterialBlendMode_Replace, false, eMaterialSpecularMode_Gloss };
 
-		// Everything else is an opaque surface: diffuse, plain bump, flat, 2D,
-		// and the handful of water/cube/envmap materials that still need their
-		// own shaders.
+		// The acid pools are opaque where they are drawn - they replace what is
+		// under them rather than blending with it - but they have to be drawn
+		// after everything else, because what they show is the scene behind
+		// them, pulled sideways. The transparent pass is where that happens.
+		if(sType == "water")
+			return { eMaterialBlendMode_Replace, true, eMaterialSpecularMode_None };
+
+		// Everything else is an opaque surface: diffuse, plain bump, flat, 2D.
 		return { eMaterialBlendMode_Replace, false, eMaterialSpecularMode_None };
 	}
 
@@ -148,6 +155,17 @@ namespace hpl {
 		// is reflective, and widening that struct would mean touching every
 		// branch of it for a single case.
 		_reflects = cString::ToLowerCase(asTypeName) == "environmentmapreflect";
+		// A refractive pool costs a full-screen copy of the scene every frame it
+		// is on screen, which on a tile based GPU means resolving the tile buffer
+		// out to memory. It is worth it on anything that can afford it and it is
+		// the first thing to give up on anything that cannot, so the port can
+		// turn it off and the pools then draw as flat acid.
+		static const bool sbRefractionAllowed = []() {
+			const char *pEnv = getenv("HPL_NO_REFRACTION");
+			return !(pEnv != NULL && pEnv[0] == '1');
+		}();
+
+		_refracts = sbRefractionAllowed && cString::ToLowerCase(asTypeName) == "water";
 
 		mbIsTransperant = traits.transparent;
 		_blendMode = traits.blendMode;
@@ -155,6 +173,8 @@ namespace hpl {
 
 		// A blended surface fades out instead of ending on a hard edge, so the
 		// cutoff that alpha-tested geometry relies on would eat its gradient.
+		// Water rides in the same pass without being blended, and its own shader
+		// never tests alpha at all.
 		_alphaCutoff = traits.transparent ? 0.0f : 0.6f;
 
 		// Deferred to GetProgramEx(): the textures are attached after the
@@ -190,6 +210,20 @@ namespace hpl {
 			const char *pFragment = mbIsTransperant
 				? "Unlit.frag"
 				: (bHasIllumination ? "UniversalIllum.frag" : "Universal.frag");
+
+			if(_refracts)
+			{
+				_program = mpProgramManager->CreateProgram("UniversalWater.vert",
+														   "UniversalWater.frag");
+				if(_program)
+				{
+					_program->Bind();
+					_program->SetTextureBindingIndex("refractMap", 1);
+					_program->SetTextureBindingIndex("screenMap", 7);
+					_program->UnBind();
+				}
+				return _program;
+			}
 
 			if(_reflects)
 			{
@@ -259,7 +293,14 @@ namespace hpl {
 		if (alUnit == 0)
 			return mvTexture[eMaterialTexture_Diffuse];
 		if (alUnit == 1)
+		{
+			// The wave map rides on the illumination unit. No water material
+			// declares an illumination texture, and the two units that would
+			// read better here - 2 and 3 - are bound by the shadow code behind
+			// the back of the texture cache, so a material must not use them.
+			if(_refracts) return mvTexture[eMaterialTexture_Refraction];
 			return mvTexture[eMaterialTexture_Illumination];
+		}
 		if (alUnit == 4)
 		{
 			// Unit 4 is the light pass's normal map. Materials without one get

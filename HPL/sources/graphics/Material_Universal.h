@@ -39,6 +39,13 @@ namespace hpl {
 		float GetAlphaCutoff() const { return _alphaCutoff; }
 
 		/**
+		 * True for the acid pools, which read the scene behind them. The
+		 * renderer has to take a copy of that scene before drawing them, so it
+		 * needs to be told.
+		 */
+		bool GetRefracts() const { return _refracts; }
+
+		/**
 		 * Stands in for materials with no normal map so the light shader can
 		 * sample unconditionally. Set once by the renderer.
 		 */
@@ -50,6 +57,7 @@ namespace hpl {
 		float _alphaCutoff;
 		eMaterialSpecularMode _specularMode;
 		bool _reflects;
+		bool _refracts;
 
 		static iTexture *_flatNormalMap;
 	};

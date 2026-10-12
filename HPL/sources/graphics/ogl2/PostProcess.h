@@ -45,6 +45,23 @@ namespace hpl {
 		/** Resolves to the back buffer, applying gamma and bloom. */
 		void Resolve(iGpuProgram *apProgram, float afGamma, float afBloomAmount);
 
+		/**
+		 * Keeps a copy of what has been drawn so far, for a surface that has to
+		 * read the scene behind it. Sampling the buffer being drawn into is not
+		 * allowed, so the only honest way is to take the copy first.
+		 */
+		bool CaptureScene();
+
+		/**
+		 * Puts that copy on its texture unit, bypassing the texture cache. A
+		 * shader that wants to read it binds its screen sampler to unit 7, which
+		 * is the one unit nothing else in the engine touches.
+		 */
+		void BindSceneCopy();
+
+		int GetWidth() const { return mlWidth; }
+		int GetHeight() const { return mlHeight; }
+
 	private:
 		void Destroy();
 
@@ -52,6 +69,7 @@ namespace hpl {
 		unsigned int mColorTexture;
 		unsigned int mDepthBuffer;
 		unsigned int mVAO;
+		unsigned int mSceneCopyTexture;
 
 		int mlWidth;
 		int mlHeight;

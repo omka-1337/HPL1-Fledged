@@ -107,13 +107,21 @@ namespace hpl {
 			// Six faces named after the file, not one image: a different call.
 			texture = texMgr->CreateCubeMap(sFile);
 		else if (animMode != eTextureAnimMode_None)
+		{
 			// TODO: [Rehatched] unify these two APIs, this is a mess
 			texture = texMgr->CreateAnim2D(sFile, animMode);
+
+			// Two materials ask for an animation whose frames were never shipped
+			// - the acid pools among them. The still image they name does exist,
+			// and drawing it is far better than drawing the surface untextured.
+			if (texture == nullptr)
+				texture = texMgr->Create2D(sFile);
+		}
 		else
 			texture = texMgr->Create2D(sFile);
 
 		if (texture == nullptr) {
-			Error("Couldn't load material texture!\n");
+			Error("Couldn't load material texture '%s'!\n", sFile.c_str());
 			return { nullptr, eMaterialTexture_None };
 		}
 
@@ -191,6 +199,7 @@ namespace hpl {
 			return nullptr;
 		}
 
+		pMat->SetValue(cString::ToFloat(pMain->Attribute("Value"), 0.0f));
 		pMat->SetHasAlpha(bUseAlpha);
 		pMat->SetDepthTest(bDepthTest);
 		pMat->SetPhysicsMaterial(sPhysicsMatName);

@@ -1117,6 +1117,12 @@ namespace hpl {
 
 		iGpuProgram *pBoundProgram = NULL;
 
+		// The scene copy a refractive surface reads is taken at most once, when
+		// the first such surface comes up, and not at all in the rest of the
+		// game. Everything drawn before it in this pass is included, which is
+		// what should show through the pool.
+		bool bSceneCaptured = false;
+
 		while(it.HasNext())
 		{
 			iRenderable *pObject = it.Next();
@@ -1152,8 +1158,27 @@ namespace hpl {
 
 			// Overrides the cutoff the shared setup just wrote: these are the
 			// materials whose gradients must survive.
-			if(Material_Universal *pUniversal = dynamic_cast<Material_Universal*>(pMaterial))
+			Material_Universal *pUniversal = dynamic_cast<Material_Universal*>(pMaterial);
+			if(pUniversal)
 				pProgram->SetFloat("alphaCutoff", pUniversal->GetAlphaCutoff());
+
+			if(pUniversal && pUniversal->GetRefracts())
+			{
+				if(bSceneCaptured == false)
+					bSceneCaptured = mpPostProcess->CaptureScene();
+
+				// Bound after the material's own textures, and straight to the
+				// unit: the copy is not an iTexture and the texture cache knows
+				// nothing about it.
+				mpPostProcess->BindSceneCopy();
+
+				pProgram->SetVec2f("screenSize",
+					(float)mpPostProcess->GetWidth(), (float)mpPostProcess->GetHeight());
+				// The .mat's Value, which for these two materials is 30: the
+				// offset is in pixels, as the original wrote it.
+				pProgram->SetFloat("scale", pMaterial->GetValue());
+				pProgram->SetFloat("t", mfRenderTime);
+			}
 
 			auto modelMatrix = pObject->GetModelMatrix(apCamera);
 			auto mvMatrix = cMath::MatrixMul(apCamera->GetViewMatrix(), modelMatrix);

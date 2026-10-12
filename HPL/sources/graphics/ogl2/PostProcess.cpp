@@ -32,10 +32,18 @@
 
 namespace hpl {
 
+	/**
+	 * Where the scene copy lives while it is being filled and while a shader
+	 * reads it. Nothing else in the engine binds this unit, and the low level
+	 * texture cache never knows about it, so the two cannot disagree.
+	 */
+	static const int kSceneCopyScratchUnit = 7;
+
 	//-----------------------------------------------------------------------
 
 	cPostProcess::cPostProcess()
-		: mFBO(0), mColorTexture(0), mDepthBuffer(0), mVAO(0), mlWidth(0), mlHeight(0)
+		: mFBO(0), mColorTexture(0), mDepthBuffer(0), mVAO(0), mSceneCopyTexture(0),
+		  mlWidth(0), mlHeight(0)
 	{
 		// Core profile refuses to draw without a bound vertex array, even when
 		// the vertices come from gl_VertexID alone.
@@ -57,6 +65,7 @@ namespace hpl {
 		if(mFBO) { glDeleteFramebuffers(1, &mFBO); mFBO = 0; }
 		if(mColorTexture) { glDeleteTextures(1, &mColorTexture); mColorTexture = 0; }
 		if(mDepthBuffer) { glDeleteRenderbuffers(1, &mDepthBuffer); mDepthBuffer = 0; }
+		if(mSceneCopyTexture) { glDeleteTextures(1, &mSceneCopyTexture); mSceneCopyTexture = 0; }
 	}
 
 	//-----------------------------------------------------------------------
@@ -151,6 +160,55 @@ namespace hpl {
 		glEnable(GL_DEPTH_TEST);
 		glDepthMask(GL_TRUE);
 		glEnable(GL_CULL_FACE);
+	}
+
+	//-----------------------------------------------------------------------
+
+	bool cPostProcess::CaptureScene()
+	{
+		if(mlWidth <= 0 || mlHeight <= 0) return false;
+
+		// Allocated the first time something asks, and only then: a scene with
+		// nothing refractive in it should not carry a second full-size buffer.
+		if(mSceneCopyTexture == 0)
+		{
+			glGenTextures(1, &mSceneCopyTexture);
+			glActiveTexture(GL_TEXTURE0 + kSceneCopyScratchUnit);
+			glBindTexture(GL_TEXTURE_2D, mSceneCopyTexture);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, mlWidth, mlHeight, 0,
+						 GL_RGBA, GL_HALF_FLOAT, NULL);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			// A refraction samples sideways of the fragment it is shading, so at
+			// the edge of the screen it asks for pixels that were never drawn.
+			// Clamping gives it the edge pixel instead of wrapping the far side
+			// of the screen into the water.
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		}
+		else
+		{
+			glActiveTexture(GL_TEXTURE0 + kSceneCopyScratchUnit);
+			glBindTexture(GL_TEXTURE_2D, mSceneCopyTexture);
+		}
+
+		// Reads from whatever is being drawn into - the off-screen target when
+		// there is one, the back buffer when the target failed to be made.
+		glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, mlWidth, mlHeight);
+
+		glActiveTexture(GL_TEXTURE0);
+		return true;
+	}
+
+	//-----------------------------------------------------------------------
+
+	void cPostProcess::BindSceneCopy()
+	{
+		if(mSceneCopyTexture == 0) return;
+
+		glActiveTexture(GL_TEXTURE0 + kSceneCopyScratchUnit);
+		glBindTexture(GL_TEXTURE_2D, mSceneCopyTexture);
+		glActiveTexture(GL_TEXTURE0);
 	}
 
 	//-----------------------------------------------------------------------
