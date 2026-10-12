@@ -63,13 +63,22 @@ namespace hpl {
 	}
 
 	static bool ResolveSequencePaths(const tString &name, std::vector<tString> &paths) {
-		auto baseName = cString::GetFileName(name);
-		auto ext = cString::GetFileExt(name);
+		// The name in a .mat is the still image - "ice_cave_water.jpg" - and the
+		// frames sit beside it as ice_cave_water01.jpg and up. Keeping the
+		// extension on while appending the number asked for
+		// "ice_cave_water.jpg01.jpg", so no frame of any animation in the game
+		// was ever found: the conveyor belt stood still, the propeller light did
+		// not blink and the water did not move.
+		auto baseName = cString::SetFileExt(cString::GetFileName(name), "");
 
 		for (int ix = 0; ix < 100; ++ix) {
-			auto frameName = baseName + (ix < 10 ? "0" : "") + std::to_string(ix) + "." + ext;
+			auto frameName = baseName + (ix < 10 ? "0" : "") + std::to_string(ix);
 			auto framePath = FileSearcher::ResolveAssetName(frameName, { s_fileFormats });
 			if (framePath.length() == 0) {
+				// The content numbers its frames from 01, so a missing 00 is the
+				// normal case and not the end of the sequence. A gap after a
+				// frame that was found is.
+				if (paths.empty() && ix == 0) continue;
 				break;
 			}
 			paths.push_back(framePath);
